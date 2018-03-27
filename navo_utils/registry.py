@@ -12,6 +12,7 @@ import os
 import re
 #import keyring
 import io
+import utils
 
 import numpy as np
 
@@ -34,84 +35,9 @@ from astroquery.utils.class_or_instance import class_or_instance
 from astroquery.exceptions import (TimeoutError, InvalidQueryError, RemoteServiceError,
                           LoginError, ResolverError, MaxResultsWarning,
                           NoResultsWarning, InputWarning, AuthenticationWarning)
-from astroquery import conf
 
 
 __all__ = ['Registry', 'RegistryClass']
-
-#
-# Functions to help replace bytes with strings in astropy tables that came from VOTABLEs
-#
-
-def sval(val):
-    """
-    Returns a string value for the given object.  When the object is an instanceof bytes,
-    utf-8 decoding is used.
-    
-    Parameters
-    ----------
-    val : object
-        The object to convert
-    
-    Returns
-    -------
-    string
-        The input value converted (if needed) to a string
-    """
-    if (isinstance(val, bytes)):
-        return str(val, 'utf-8')
-    else:
-        return str(val)
-
-# Create a version of sval() that operates on a whole column.
-svalv = np.vectorize(sval)
-
-def sval_whole_column(single_column):
-    """
-    Returns a new column whose values are the string versions of the values
-    in the input column.  The new column also keeps the metadata from the input column.
-    
-    Parameters
-    ----------
-    single_column : astropy.table.Column
-        The input column to stringify
-        
-    Returns
-    -------
-    astropy.table.Column
-        Stringified version of input column
-    """
-    new_col = svalv(single_column)
-    new_col.meta = single_column.meta
-    return new_col
-
-def stringify_table(t):
-    """
-    Substitutes strings for bytes values in the given table.
-    
-    Parameters
-    ----------
-    t : astropy.table.Table
-        An astropy table assumed to have been created from a VOTABLE.
-    
-    Returns
-    -------
-    astropy.table.Table
-        The same table as input, but with bytes-valued cells replaced by strings.
-    """
-    # This mess will look for columns that should be strings and convert them.
-    if (len(t) is 0):
-        return   # Nothing to convert
-    
-    scols = []
-    for col in t.columns:
-        colobj = t.columns[col]
-        if (colobj.dtype == 'object' and isinstance(t[colobj.name][0], bytes)):
-            scols.append(colobj.name)
-
-    for colname in scols:
-        t[colname] = sval_whole_column(t[colname])
-        
 
 
 class RegistryClass(BaseQuery):
@@ -124,8 +50,7 @@ class RegistryClass(BaseQuery):
 
         super(RegistryClass, self).__init__()
 
-        self._REGISTRY_TAP_SYNC_URL = conf.registry_tap_url + "/sync"
-
+        self._REGISTRY_TAP_SYNC_URL = "https://vao.stsci.edu/RegTAP/TapService.aspx/sync"
 
     def query(self, **kwargs):
         
@@ -157,7 +82,7 @@ class RegistryClass(BaseQuery):
         
         if 'debug' in kwargs and kwargs['debug']==True: print('Queried: {}\n'.format(response.url))
         
-        aptable = self._astropy_table_from_votable_response(response)
+        aptable = utils.astropy_table_from_votable_response(response)
         
         return aptable
     
@@ -188,11 +113,11 @@ class RegistryClass(BaseQuery):
         
         ##
         if "image" in service_type.lower():
-           service_type="simpleimageaccess"
+            service_type="simpleimageaccess"
         elif "spectr" in service_type.lower():
-           service_type="simplespectralaccess"
+            service_type="simplespectralaccess"
         elif "cone" in service_type.lower():
-           service_type="conesearch"
+            service_type="conesearch"
         else:
             service_type="tableaccess"
     
@@ -236,41 +161,35 @@ class RegistryClass(BaseQuery):
         
         return query
 
-    
-    def _astropy_table_from_votable_response(self, response):
-        """
-        Takes a VOTABLE response from a web service and returns an astropy table.
-        
-        Parameters
-        ----------
-        response : requests.Response
-            Response whose contents are assumed to be a VOTABLE.
-            
-        Returns
-        -------
-        astropy.table.Table
-            Astropy Table containing the data from the first TABLE in the VOTABLE.
-        """
-        
-        # The astropy table reader would like a file-like object, so convert
-        # the response content a byte stream.  This assumes Python 3.x.
-        # 
-        # (The reader also accepts just a string, but that seems to have two 
-        # problems:  It looks for newlines to see if the string is itself a table,
-        # and we need to support unicode content.)
-        file_like_content = io.BytesIO(response.content)
-        
-        # The astropy table reader will auto-detect that the content is a VOTABLE
-        # and parse it appropriately.
-        aptable = Table.read(file_like_content)
-        
-        # String values in the VOTABLE are stored in the astropy Table as bytes instead 
-        # of strings.  To makes accessing them more convenient, we will convert all those
-        # bytes values to strings.
-        stringify_table(aptable)
-        
-        return aptable
-
-
 
 Registry = RegistryClass()
+
+
+
+
+def display_results(results):
+    # Display results in a readable way including the 
+    # short_name, ivoid, res_description and reference_url.
+
+    for row in results:
+        md = f'{row["short_name"]} ({row["ivoid"]})'
+        print(md)
+        print (row['res_description'])
+        print (f'(More info: {row["reference_url"]} )')
+
+def main():
+    results = Registry.query(source='nasa.heasarc', service_type='image')
+    
+    display_results(results)    
+    
+
+
+#
+# Main program
+#
+    
+if __name__ == "__main__":
+    import sys
+    #fib(int(sys.argv[1]))
+    main()
+    
