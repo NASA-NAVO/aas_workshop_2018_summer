@@ -12,7 +12,7 @@ import os
 import re
 #import keyring
 import io
-import utils
+from . import utils
 
 import numpy as np
 

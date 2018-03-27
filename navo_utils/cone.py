@@ -2,7 +2,9 @@ from IPython.core.debugger import Tracer
 from astroquery.query import BaseQuery
 import html # to unescape, which shouldn't be neccessary but currently is
 from .registry import Registry
-import utils
+from . import utils
+from astropy.table import Table, vstack
+import requests, io, astropy
 
 class ConeClass(BaseQuery):
     def __init__(self):
@@ -18,7 +20,7 @@ class ConeClass(BaseQuery):
         for service in services:
             print("    Querying service {}".format(html.unescape(service['access_url'])))
             # Initialize a cone table to add results to:
-            service_results=astropy_cone_table_from_votable_response('')
+            service_results=self._astropy_cone_table_from_votable_response('')
             #  TO BE FIXED: should work if inra is a single float *or* string:
             for i,ra in enumerate(inra):
                 # Construct params ... For now, hard wire:
@@ -27,6 +29,8 @@ class ConeClass(BaseQuery):
                     radius=inradius[i]
                 else:
                     radius=inradius
+                #Tracer()() 
+
                 result=self._one_cone_search(ra,dec,radius,html.unescape(service['access_url']))
                 # Need a test that we got something back. Shouldn't error if not, just be empty
                 if len(result) > 0:
@@ -46,9 +50,33 @@ class ConeClass(BaseQuery):
     def _one_cone_search(self, ra, dec, radius, service):
         params = {'RA': ra, 'DEC': dec, 'SR':radius}
         # For some reason, this has to be a GET not a POST?
+        #Tracer()()
         response=self._request('GET',service,params=params)
-        return astropy_cone_table_from_votable_response(response)
-    
+        return self._astropy_cone_table_from_votable_response(response)
+
+    def _astropy_cone_table_from_votable_response(self,response):
+        """Need one of these for each class, or one generic standardize()? 
+        
+        For now, just simple conversion. Store the raw XML
+        from the query as well as the URL in the meta data.
+        In future, standardize the columns by replacing the 
+        column name with the UCD if there is one.
+        """
+        #Tracer()()
+        try:
+            table= Table.read(io.BytesIO(response.content))
+            # Store the raw response content and the url queried
+            #  in the meta data of the table. Make its value a list,
+            #  because this will allow us to concatenate (vstack)
+            #  different queries and merge the metadata
+            table.meta['xml_raw']=[response.content]
+            table.meta['url']=[response.url]
+            return table
+        except:
+            empty=Table(masked=True)
+            empty.meta['xml_raw']=[]
+            empty.meta['url']=[]
+            return empty
 
 Cone=ConeClass()
 
