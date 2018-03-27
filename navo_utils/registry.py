@@ -38,8 +38,7 @@ from astroquery.exceptions import (TimeoutError, InvalidQueryError, RemoteServic
 
 
 __all__ = ['Registry', 'RegistryClass']
-
-
+    
 class RegistryClass(BaseQuery):
     """
     Registry query class.
@@ -56,19 +55,9 @@ class RegistryClass(BaseQuery):
         
         
         adql = self._build_adql(**kwargs)
-        x = """
-            select b.waveband,b.short_name,a.ivoid,b.res_description,c.access_url,b.reference_url from rr.capability a 
-            natural join rr.resource b 
-            natural join rr.interface c
-            where a.cap_type='SimpleImageAccess' and a.ivoid like 'ivo://%stsci%' 
-            order by short_name
-        """
-        if 'debug' in kwargs and kwargs['debug']==True: print ('Registry:  sending query ADQL = {}\n'.format(adql))
 
-        if 'method' in kwargs:
-            method = kewargs['method']
-        else:
-            method = 'POST'
+        if kwargs.get('debug'):
+            print ('Registry:  sending query ADQL = {}\n'.format(adql))
 
         url = self._REGISTRY_TAP_SYNC_URL
         
@@ -78,14 +67,18 @@ class RegistryClass(BaseQuery):
             "query": adql
         }
         
-        response = self._request(method, url, data=tap_params)
+        response = self._request('POST', url, data=tap_params)
         
-        if 'debug' in kwargs and kwargs['debug']==True: print('Queried: {}\n'.format(response.url))
+        if kwargs.get('debug'): 
+            print('Queried: {}\n'.format(response.url))
         
         aptable = utils.astropy_table_from_votable_response(response)
         
         return aptable
-    
+
+    # TBD support list of wavebands
+    # TBD maybe support raw ADQL clause (or maybe we should just make 
+    # sure they can call a basic TAP query)
     def _build_adql(self, **kwargs):
         
         # Default values
@@ -128,12 +121,7 @@ class RegistryClass(BaseQuery):
            natural join rr.resource res
            natural join rr.interface int
            """
-        
-        x = """
-            select b.waveband,b.short_name,a.ivoid,b.res_description,c.access_url,b.reference_url from rr.capability a 
-    natural join rr.resource b 
-    natural join rr.interface c
-        """
+
         query_where="where "
         
         wheres=[]
