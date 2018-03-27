@@ -116,10 +116,10 @@ class RegistryClass(BaseQuery):
     
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,
-          int.access_url, res.reference_url
-           from rr.capability cap
-           natural join rr.resource res
-           natural join rr.interface int
+          intf.access_url, res.reference_url
+           from rr.capability as cap
+           natural join rr.resource as res
+           natural join rr.interface as intf
            """
 
         query_where="where "
