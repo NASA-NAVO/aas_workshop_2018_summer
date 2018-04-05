@@ -136,7 +136,13 @@ class RegistryClass(BaseQuery):
         if source is not "":
             wheres.append("cap.ivoid like '%{}%'".format(source))
         if waveband is not "":
-            wheres.append("res.waveband like '%{}%'".format(waveband))
+            if ',' in waveband:
+                allwavebands=[]
+                for w in waveband.split(','):
+                    allwavebands.append("res.waveband like '%{}%' ".format(w).strip())
+                wheres.append("( " + " or ".join(allwavebands) + ")")                    
+            else:
+                wheres.append("res.waveband like '%{}%'".format(waveband))
         if publisher is not "":
             wheres.append("role.base_role = 'publisher' and role.role_name like '%{}%'".format(publisher))
         if keyword is not "":
