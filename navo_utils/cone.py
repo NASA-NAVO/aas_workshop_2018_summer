@@ -5,33 +5,47 @@ from .registry import Registry
 from . import utils
 from astropy.table import Table, vstack
 import requests, io, astropy
+from astropy.coordinates import SkyCoord, ICRS
 
 class ConeClass(BaseQuery):
     def __init__(self):
         super(ConeClass, self).__init__()
 
-    def query(self, inra, indec, inradius, **kwargs):
+    def query(self, incoords, inradius, services=None, **kwargs):
+
         # Get the list of URLs that provide matching cone searches 
-        services=Registry.query(service_type='cone',**kwargs)
+        if services is None: 
+            try:
+                services=Registry.query(service_type='cone',**kwargs)
+                check=True
+            except:
+                raise 
+        else: check=False
+
         # For now, a list of tables, one table per service:
         all_results=[]
         # If there's more than one service URL found, then loop
         print("Found {} services to query.".format(len(services)))
+
         for service in services:
+
             print("    Querying service {}".format(html.unescape(service['access_url'])))
+
             # Initialize a cone table to add results to:
             service_results=self._astropy_cone_table_from_votable_response('')
-            #  TO BE FIXED: should work if inra is a single float *or* string:
-            for i,ra in enumerate(inra):
-                # Construct params ... For now, hard wire:
-                dec=indec[i]
+
+            for i,c in enumerate(incoords):
+                #Tracer()() 
+                # Doesn't like me to specify ICRS, though it works in debugger
+                coords=SkyCoord(c,unit='deg')
+
                 if len(inradius) > 1: 
                     radius=inradius[i]
                 else:
                     radius=inradius
-                #Tracer()() 
+                
 
-                result=self._one_cone_search(ra,dec,radius,html.unescape(service['access_url']))
+                result=self._one_cone_search(coords.ra.deg,coords.dec.deg,radius,html.unescape(service['access_url']))
                 # Need a test that we got something back. Shouldn't error if not, just be empty
                 if len(result) > 0:
                     # Extend requires that all the columns be the same. 
@@ -45,13 +59,15 @@ class ConeClass(BaseQuery):
             #Tracer()()
             if len(service_results) > 0:
                 all_results.append(service_results)
+
         return all_results
 
     def _one_cone_search(self, ra, dec, radius, service):
         params = {'RA': ra, 'DEC': dec, 'SR':radius}
-        # For some reason, this has to be a GET not a POST?
+        # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
         response=self._request('GET',service,params=params)
+        #response=self._request('POST',service,data=params)
         return self._astropy_cone_table_from_votable_response(response)
 
     def _astropy_cone_table_from_votable_response(self,response):
