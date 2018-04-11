@@ -49,7 +49,7 @@ class RegistryClass(BaseQuery):
 
         super(RegistryClass, self).__init__()
 
-        self._REGISTRY_TAP_SYNC_URL = "https://vao.stsci.edu/RegTAP/TapService.aspx/sync"
+        self._REGISTRY_TAP_SYNC_URL = "http://vao.stsci.edu/RegTAP/TapService.aspx/sync"
 
     def query(self, **kwargs):
         
@@ -67,14 +67,13 @@ class RegistryClass(BaseQuery):
             "query": adql
         }
         
-        response = self._request('POST', url, data=tap_params)
+        response = self._request('POST', url, data=tap_params, cache=False)
         
         if kwargs.get('debug'): 
             print('Queried: {}\n'.format(response.url))
         
-        aptable = utils.astropy_table_from_votable_response(response)
-        
-        return aptable
+        aptable = utils.astropy_table_from_votable_response(response)        
+        return aptable            
 
     # TBD support list of wavebands
     # TBD maybe support raw ADQL clause (or maybe we should just make 
@@ -86,6 +85,7 @@ class RegistryClass(BaseQuery):
         keyword=""
         waveband=""
         source=""
+        publisher=""
         order_by=""
         logic_string=" and "
         
@@ -99,6 +99,8 @@ class RegistryClass(BaseQuery):
                 waveband = val
             elif (key == 'source'):
                 source = val
+            elif (key == 'publisher'):
+                publisher = val
             elif (key == 'order_by'):
                 order_by = val
             elif (key == 'logic_string'):
@@ -117,12 +119,16 @@ class RegistryClass(BaseQuery):
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,
           intf.access_url, res.reference_url
-           from rr.capability as cap
-           natural join rr.resource as res
-           natural join rr.interface as intf
-           """
+          from rr.capability as cap
+          natural join rr.resource as res
+          natural join rr.interface as intf
+          """       
+        if publisher is not "":
+            query_retcols=query_retcols+"""
+             natural join rr.res_role as role
+             """
 
-        query_where="where "
+        query_where=" where "
         
         wheres=[]
         if service_type is not "":
@@ -130,8 +136,16 @@ class RegistryClass(BaseQuery):
         if source is not "":
             wheres.append("cap.ivoid like '%{}%'".format(source))
         if waveband is not "":
-            wheres.append("res.waveband like '%{}%'".format(waveband))
-        if (keyword is not ""):
+            if ',' in waveband:
+                allwavebands=[]
+                for w in waveband.split(','):
+                    allwavebands.append("res.waveband like '%{}%' ".format(w).strip())
+                wheres.append("(" + " or ".join(allwavebands) + ")")                    
+            else:
+                wheres.append("res.waveband like '%{}%'".format(waveband))
+        if publisher is not "":
+            wheres.append("role.base_role = 'publisher' and role.role_name like '%{}%'".format(publisher))
+        if keyword is not "":
             keyword_where = """
              (res.res_description like '%{}%' or
             res.res_title like '%{}%' or
@@ -148,11 +162,57 @@ class RegistryClass(BaseQuery):
         query=query_retcols+query_where+query_order
         
         return query
+        
+    def query_counts(self, field, minimum=1, **kwargs):
+            
+        adql = self._build_counts_adql(field, minimum)
 
+        if kwargs.get('debug'):
+            print ('Registry:  sending query ADQL = {}\n'.format(adql))
 
+        url = self._REGISTRY_TAP_SYNC_URL
+        
+        tap_params = {
+            "request": "doQuery",
+            "lang": "ADQL",
+            "query": adql
+        }
+        
+        response = self._request('POST', url, data=tap_params, cache=False)
+        
+        if kwargs.get('debug'):
+            print('Queried: {}\n'.format(response.url))
+        
+        aptable = utils.astropy_table_from_votable_response(response)        
+        return aptable           
+        
+        
+    def _build_counts_adql(self, field, minimum=1):
+    
+        field_table = None
+        query_where_filter = ''
+        if field.lower() == 'waveband':
+            field_table = 'rr.resource'
+        elif field.lower() == 'publisher':
+            field_table = 'rr.res_role'
+            field = 'role_name'
+            query_where_filter = ' where base_role = \'publisher\' '
+           
+        if field_table is None:
+            return None
+        else:
+            query_select = 'select ' + field + ', count(' + field + ') as count_field'       
+            query_from = ' from ' + field_table    
+            query_where_count_min = ' where count_field >= ' + str(minimum)            
+            query_group_by = ' group by ' + field                        
+            query_order_by = ' order by count_field desc'           
+            
+            query = 'select * from (' + query_select + query_from + query_where_filter + query_group_by + ') as count_table' + query_where_count_min + query_order_by                
+                
+            return query
+        
+        
 Registry = RegistryClass()
-
-
 
 
 def display_results(results):
