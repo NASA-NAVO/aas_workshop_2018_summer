@@ -67,7 +67,7 @@ class RegistryClass(BaseQuery):
             "query": adql
         }
         
-        response = self._request('POST', url, data=tap_params)
+        response = self._request('POST', url, data=tap_params, cache=False)
         
         if kwargs.get('debug'): 
             print('Queried: {}\n'.format(response.url))
@@ -140,7 +140,7 @@ class RegistryClass(BaseQuery):
                 allwavebands=[]
                 for w in waveband.split(','):
                     allwavebands.append("res.waveband like '%{}%' ".format(w).strip())
-                wheres.append("( " + " or ".join(allwavebands) + ")")                    
+                wheres.append("(" + " or ".join(allwavebands) + ")")                    
             else:
                 wheres.append("res.waveband like '%{}%'".format(waveband))
         if publisher is not "":
@@ -178,7 +178,7 @@ class RegistryClass(BaseQuery):
             "query": adql
         }
         
-        response = self._request('POST', url, data=tap_params)
+        response = self._request('POST', url, data=tap_params, cache=False)
         
         if kwargs.get('debug'):
             print('Queried: {}\n'.format(response.url))
