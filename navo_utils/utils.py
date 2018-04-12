@@ -3,10 +3,10 @@
 #
 
 import requests
-import io
+import io, re
 import numpy as np
 from astropy.table import Table, unique
-
+from IPython.core.debugger import Tracer
 #
 # Support for VOTABLEs as astropy tables
 #
@@ -39,7 +39,8 @@ def astropy_table_from_votable_response(response):
     # The astropy table reader will auto-detect that the content is a VOTABLE
     # and parse it appropriately.
     aptable = Table.read(file_like_content, format='votable')
-    
+    aptable.meta['url']=response.url
+    aptable.meta['text']=response.text
     # String values in the VOTABLE are stored in the astropy Table as bytes instead 
     # of strings.  To makes accessing them more convenient, we will convert all those
     # bytes values to strings.
@@ -191,4 +192,95 @@ def stringify_table(t):
     for colname in scols:
         t[colname] = sval_whole_column(t[colname])
         
+
+
+def parse_coords(incoords, **kwargs):
+    """Convert whatever the user gives to a simple list of SkyCoord objects.
+
+    Depending on what's given, it calls the appropriate SkyCoord
+    constructor. Inputs can be 
+    - a single string (comma or space separated; see SkyCoord docs), or 
+    - a pair of two strings, i.e., ['ra','dec'], or
+    - a list of strings ['ra dec', 'ra dec'] or
+    - a list of lists [['ra','dec'],['ra','dec']] or
+    - a list of floats [ra,dec], or 
+    - a list of lists of floats  [[ra,dec],[ra,dec]] 
+
+    Special cases include a list of two strings. This could be two
+    positions, each with an RA+DEC pair specified as a single string,
+    or it could be simply the list ['ra','dec']. To decide, look at the
+    first to see what format it looks like. Examples include
+
+    ['h m s','h m s'] # one position's RA, DEC in hms
+    ['ra.xxx dec.xxx','ra2.xxx dec2.xxx'] # two positions RA, DEC in degrees
+    ['ra.xxx','dec.xxx'] # one position's RA, DEC in deg
+    ['h:m.m h:m', 'h2:m.m h2:m'] # two position's RA,DEC pairs in h:m.m
+    etc.
+
+    """
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+    coords=[]
+    # First, the incoords must be either a single string or a list. If
+    # a list, then each entry in the list must be either a single
+    # string that has both (e.g., "RA DEC" or "RA, DEC") or a list of
+    # two [RA,DEC] (where RA could be str or float).
+    
+    # Then worry about the ambiguity of a list of 2:  two positions
+    # each in single-string format or one position specified as a
+    # pair? If it's the former, then each *has* to have a divider,
+    # either white space or comma. But a single RA could have a
+    # space. But if it has one, then it should have two.
+    #
+    #    ['h m s','d m s'] # one position's RA, DEC in hms
+    #    ['ra.xxx','dec.xxx'] # one position's RA, DEC in deg
+    #    ['h:m.m', 'd:m'] # ??
+    #Tracer()()
+    if len(incoords) == 2 and type(incoords[0]) is str:
+        if re.match("^\s*\S+\s+\S+\s*$" ,incoords[0]):
+            # "x y" is always a pair in a stringle string. But only if
+            # there's only one whitespace:
+            incoords=[ [incoords[0]], [incoords[1]] ]
+        elif re.match("^\s*\S+\s+\S+\s+\S+\s*$",incoords[0]):
+            # "x y z" is always a single coordinate, so the list is a single pair
+            # In this case, change it to a list of lists
+            incoords=[ incoords ]
+        else:
+            # Anything else has to be ra.ddd, HhMmSs, or HhM.Mm or HH:MM.M or something for a single entry
+            incoords=[ incoords ]
+    # If one gives a list of floats [10.6,41.2], then make a list of lists again
+    elif len(incoords)==2 and type(incoords[0]) is float:
+        incoords=[ incoords ]
+    elif type(incoords) is str:
+        incoords=[ [incoords] ]
+    elif len(incoords)>2 and type(incoords[0]) is str:
+        incoords=[ [s] for s in incoords]
+    elif len(incoords)>2 and type(incoords[0]) is list and type(incoords[0][0]) is float or type(incoords[0][0]) is int:
+        pass
+    else:
+        #print("WARNING: I'm confused about the input: {}; passing to SkyCoord()".format(incoords))
+        pass
+        
+    # Now incoords is always a list, and each entry in the list is a position. That position
+    # is *also* a list, either of one string or two coordinates. 
+    for i,c in enumerate(incoords):
+        if type(c[0]) is str and \
+           ('h' in c[0] or ':' in c[0] or re.match("^\s*\S+\s+\S+\s+\S+\s*$", c[0])
+           or re.match("^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*$", c[0])):
+            inunit=(u.hourangle,u.deg)
+        else:
+            inunit='deg'
+        if len(c) == 1: 
+            coords.append( SkyCoord(c[0],unit=inunit) )
+        elif type(c[0]) is str:
+            coords.append( SkyCoord(c[0], c[1], unit=inunit ))
+        elif type(c[0]) is float or type(c[0]) is int:
+            coords.append( SkyCoord(c[0]*u.degree,c[1]*u.degree,unit=inunit) )
+        else:
+            print("ERROR:  I'm confused about entry {}: {}".format(i,c))
+            return None
+
+    return coords
+
+            
 
