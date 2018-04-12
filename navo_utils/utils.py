@@ -82,7 +82,6 @@ def find_column_by_ucd(table, ucd):
                 return col
     
     return None
-
 #
 # Wrappers for Virtual Observatory queries
 #
@@ -190,7 +189,8 @@ def stringify_table(t):
             scols.append(colobj.name)
 
     for colname in scols:
-        t[colname] = sval_whole_column(t[colname])
+        t[colname] = sval_whole_column(t[colname])      
+        
         
 
 
