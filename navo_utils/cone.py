@@ -5,47 +5,61 @@ from .registry import Registry
 from . import utils
 from astropy.table import Table, vstack
 import requests, io, astropy
-from astropy.coordinates import SkyCoord, ICRS
+
 
 class ConeClass(BaseQuery):
     def __init__(self):
         super(ConeClass, self).__init__()
 
-    def query(self, incoords, inradius, services=None, **kwargs):
+    def query(self, incoords, inradius, services=None, max_services=10, **kwargs):
 
+
+        if type(inradius) is float or type(inradius) is int or type(inradius) is str:
+            inradius=[inradius]
+        elif len(inradius) > 1:
+            assert len(inradius) != len(incoords), "Please give either a single radius or one for each input position."
+            
         # Get the list of URLs that provide matching cone searches 
+        #
         if services is None: 
             try:
                 services=Registry.query(service_type='cone',**kwargs)
-                check=True
             except:
                 raise 
-        else: check=False
+        elif type(services) is astropy.table.row.Row:
+            # The user handed one row of an astropy table, e.g., from
+            # a registry query, make it look like a list
+            services=[services] 
+        elif type(services) is str:
+            services=[{'access_url':services}]
+        else:
+            #? 
+            pass 
+
+        if len(services) > max_services:
+            print("WARNING: You're asking to query more than {} services; I'm only going to do the first {}. If you really mean it, then set the max_services parameter to a larger number than that.".format(len(services),max_services))
+            
+
+        coords=utils.parse_coords(incoords,**kwargs)
 
         # For now, a list of tables, one table per service:
         all_results=[]
         # If there's more than one service URL found, then loop
         print("Found {} services to query.".format(len(services)))
-
-        for service in services:
-
+        for i,service in enumerate(services):
+            if i>=max_services: break
             print("    Querying service {}".format(html.unescape(service['access_url'])))
-
             # Initialize a cone table to add results to:
             service_results=self._astropy_cone_table_from_votable_response('')
-
-            for i,c in enumerate(incoords):
-                #Tracer()() 
-                # Doesn't like me to specify ICRS, though it works in debugger
-                coords=SkyCoord(c,unit='deg')
-
+            for i,c in enumerate(coords):
+ 
                 if len(inradius) > 1: 
                     radius=inradius[i]
+                elif type(inradius) is list:
+                    radius=inradius[0]
                 else:
                     radius=inradius
-                
-
-                result=self._one_cone_search(coords.ra.deg,coords.dec.deg,radius,html.unescape(service['access_url']))
+                result=self._one_cone_search(c.ra.deg,c.dec.deg,radius,html.unescape(service['access_url']))
                 # Need a test that we got something back. Shouldn't error if not, just be empty
                 if len(result) > 0:
                     # Extend requires that all the columns be the same. 
@@ -59,16 +73,17 @@ class ConeClass(BaseQuery):
             #Tracer()()
             if len(service_results) > 0:
                 all_results.append(service_results)
-
         return all_results
+
 
     def _one_cone_search(self, ra, dec, radius, service):
         params = {'RA': ra, 'DEC': dec, 'SR':radius}
         # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
-        response=self._request('GET',service,params=params)
-        #response=self._request('POST',service,data=params)
+        #response=self._request('GET',service,params=params,cache=False)
+        response=self._request('POST',service,data=params,cache=False)
         return self._astropy_cone_table_from_votable_response(response)
+
 
     def _astropy_cone_table_from_votable_response(self,response):
         """Need one of these for each class, or one generic standardize()? 
