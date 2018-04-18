@@ -17,8 +17,9 @@ class ConeClass(BaseQuery):
         if type(inradius) is float or type(inradius) is int or type(inradius) is str:
             inradius=[inradius]
         elif len(inradius) > 1:
-            assert len(inradius) != len(incoords), "Please give either a single radius or one for each input position."
+            assert len(inradius) == len(incoords), "Please give either a single radius or one for each input position."
             
+        #Tracer()()
         # Get the list of URLs that provide matching cone searches 
         #
         if services is None: 
