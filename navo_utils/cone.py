@@ -51,7 +51,7 @@ class ConeClass(BaseQuery):
             if i>=max_services: break
             print("    Querying service {}".format(html.unescape(service['access_url'])))
             # Initialize a cone table to add results to:
-            service_results=self._astropy_cone_table_from_votable_response('')
+            service_results=[]  #self._astropy_cone_table_from_votable_response('')
             for i,c in enumerate(coords):
  
                 if len(inradius) > 1: 
@@ -68,12 +68,15 @@ class ConeClass(BaseQuery):
                     # The "cone_table_from_votable" should do that but for now, append to a list.
                     print("    Got {} results for source number {}".format(len(result),i))
                     #Tracer()() 
-                    service_results=vstack([service_results,result])
+                    #service_results=vstack([service_results,result])
+                    
                 else:
                     print("    (Got no results for source number {})".format(i))
+                
+                service_results.append(result)                
             #Tracer()()
-            if len(service_results) > 0:
-                all_results.append(service_results)
+            
+            all_results.append(service_results)
         return all_results
 
 
@@ -81,8 +84,7 @@ class ConeClass(BaseQuery):
         params = {'RA': ra, 'DEC': dec, 'SR':radius}
         # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
-        #response=self._request('GET',service,params=params,cache=False)
-        response=self._request('POST',service,data=params,cache=False)
+        response=self._request('GET',service,params=params,cache=False)
         return self._astropy_cone_table_from_votable_response(response)
 
 
@@ -105,6 +107,8 @@ class ConeClass(BaseQuery):
             table.meta['url']=[response.url]
             return table
         except:
+            # TODO: if this was a real exception, as opposed to being just an empty result, we should put
+            # the exception info into the metadata or somewhere in the table.
             empty=Table(masked=True)
             empty.meta['xml_raw']=[]
             empty.meta['url']=[]
