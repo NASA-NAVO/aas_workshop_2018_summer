@@ -12,12 +12,6 @@ class ConeClass(BaseQuery):
         super(ConeClass, self).__init__()
 
     def query(self, incoords, inradius, services=None, max_services=10, **kwargs):
-
-
-        if type(inradius) is float or type(inradius) is int or type(inradius) is str:
-            inradius=[inradius]
-        elif len(inradius) > 1:
-            assert len(inradius) == len(incoords), "Please give either a single radius or one for each input position."
             
         #Tracer()()
         # Get the list of URLs that provide matching cone searches 
@@ -39,49 +33,24 @@ class ConeClass(BaseQuery):
 
         if len(services) > max_services:
             print("WARNING: You're asking to query more than {} services; I'm only going to do the first {}. If you really mean it, then set the max_services parameter to a larger number than that.".format(len(services),max_services))
+            services=services[0:max_services-1]
             
-
         coords=utils.parse_coords(incoords,**kwargs)
+        if type(inradius) is not list:
+            radius =  [inradius]*len(incoords)
+        else:
+            radius = inradius            
+            assert len(radius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
 
-        # For now, a list of tables, one table per service:
-        all_results=[]
-        # If there's more than one service URL found, then loop
-        print("Found {} services to query.".format(len(services)))
-        for i,service in enumerate(services):
-            if i>=max_services: break
-            print("    Querying service {}".format(html.unescape(service['access_url'])))
-            # Initialize a cone table to add results to:
-            service_results=[]  #self._astropy_cone_table_from_votable_response('')
-            for i,c in enumerate(coords):
- 
-                if len(inradius) > 1: 
-                    radius=inradius[i]
-                elif type(inradius) is list:
-                    radius=inradius[0]
-                else:
-                    radius=inradius
-                result=self._one_cone_search(c.ra.deg,c.dec.deg,radius,html.unescape(service['access_url']))
-                # Need a test that we got something back. Shouldn't error if not, just be empty
-                if len(result) > 0:
-                    # Extend requires that all the columns be the same. 
-                    # (The meta data for the result columns are lost because assumed to be the same.)
-                    # The "cone_table_from_votable" should do that but for now, append to a list.
-                    print("    Got {} results for source number {}".format(len(result),i))
-                    #Tracer()() 
-                    #service_results=vstack([service_results,result])
-                    
-                else:
-                    print("    (Got no results for source number {})".format(i))
-                
-                service_results.append(result)                
-            #Tracer()()
-            
-            all_results.append(service_results)
-        return all_results
+        # Construct list of dictionaries, each with the parameters needed 
+        # for the function you're calling in the query_loop:
+        params=[{'coords':c,'radius':radius[i]} for i,c in enumerate(coords)] 
+        all_results=utils.query_loop(self._one_cone_search, services=services, params=params, max_services=max_services)
 
 
-    def _one_cone_search(self, ra, dec, radius, service):
-        params = {'RA': ra, 'DEC': dec, 'SR':radius}
+    def _one_cone_search(self, coords, radius, service):
+        
+        params = {'RA': coords.ra.deg, 'DEC': coords.dec.deg, 'SR':radius}
         # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
         response=self._request('GET',service,params=params,cache=False)
@@ -103,15 +72,17 @@ class ConeClass(BaseQuery):
             #  in the meta data of the table. Make its value a list,
             #  because this will allow us to concatenate (vstack)
             #  different queries and merge the metadata
+            
+            # TODO:  Consider whether we want to save the raw data for non-debug cases.
             table.meta['xml_raw']=[response.content]
             table.meta['url']=[response.url]
             return table
         except:
             # TODO: if this was a real exception, as opposed to being just an empty result, we should put
-            # the exception info into the metadata or somewhere in the table.
+            # the exception info into the metadata or somewhere in the table.  Consider more detailed info here too.
             empty=Table(masked=True)
-            empty.meta['xml_raw']=[]
-            empty.meta['url']=[]
+            empty.meta['xml_raw']=[response.content]
+            empty.meta['url']=[response.url]
             return empty
 
 Cone=ConeClass()

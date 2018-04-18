@@ -7,6 +7,7 @@ import io, re
 import numpy as np
 from astropy.table import Table, unique
 from IPython.core.debugger import Tracer
+import html # to unescape, which shouldn't be neccessary but currently is
 #
 # Support for VOTABLEs as astropy tables
 #
@@ -283,4 +284,31 @@ def parse_coords(incoords, **kwargs):
     return coords
 
             
+
+def query_loop(query_function, services, params, max_services=10, quiet=False):
+    # If there's more than one service URL found, then loop
+    all_results=[]
+    print("Found {} services to query.".format(len(services)))
+    for i,service in enumerate(services):
+        if i>=max_services: break
+        if not quiet:
+            print("    Querying service {}".format(html.unescape(service['access_url'])))
+        # Initialize a table to add results to:
+        service_results=[]  
+        for j,param in enumerate(params):
+    
+            result=query_function(service=html.unescape(service['access_url']),**param)
+            # Need a test that we got something back. Shouldn't error if not, just be empty
+            if not quiet:
+                if len(result) > 0:
+                    print("    Got {} results for source number {}".format(len(result),j))
+                    #Tracer()() 
+                else:
+                    print("    (Got no results for source number {})".format(i))
+            
+            service_results.append(result)                
+        #Tracer()()
+        
+        all_results.append(service_results)
+    return all_results
 
