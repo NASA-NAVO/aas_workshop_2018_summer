@@ -1,17 +1,18 @@
 from IPython.core.debugger import Tracer
 from astroquery.query import BaseQuery
+from astroquery.utils import parse_coordinates
+from astropy.coordinates import SkyCoord
 import html # to unescape, which shouldn't be neccessary but currently is
 from .registry import Registry
 from . import utils
 from astropy.table import Table, vstack
 import requests, io, astropy
 
-
 class ConeClass(BaseQuery):
     def __init__(self):
         super(ConeClass, self).__init__()
 
-    def query(self, incoords, inradius, services=None, max_services=10, **kwargs):
+    def query(self, coords, inradius, services=None, max_services=10, **kwargs):
             
         #Tracer()()
         # Get the list of URLs that provide matching cone searches 
@@ -35,9 +36,12 @@ class ConeClass(BaseQuery):
             print("WARNING: You're asking to query more than {} services; I'm only going to do the first {}. If you really mean it, then set the max_services parameter to a larger number than that.".format(len(services),max_services))
             services=services[0:max_services-1]
             
-        coords=utils.parse_coords(incoords,**kwargs)
+        if type(coords) is str or isinstance(coords,SkyCoord):
+            coords=[coords]
+        assert type(coords) is list, "ERROR: Give a coordinate object that is a single string, a tuple (ra,dec), a SkyCoord, or a list of any of the above."
+
         if type(inradius) is not list:
-            radius =  [inradius]*len(incoords)
+            radius =  [inradius]*len(coords)
         else:
             radius = inradius            
             assert len(radius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
@@ -45,11 +49,14 @@ class ConeClass(BaseQuery):
         # Construct list of dictionaries, each with the parameters needed 
         # for the function you're calling in the query_loop:
         params=[{'coords':c,'radius':radius[i]} for i,c in enumerate(coords)] 
-        all_results=utils.query_loop(self._one_cone_search, services=services, params=params, max_services=max_services)
-
+        return utils.query_loop(self._one_cone_search, services=services, params=params, max_services=max_services)
+        
 
     def _one_cone_search(self, coords, radius, service):
-        
+        if type(coords) is tuple or ( type(coords) is list and len(coords) == 2):
+            coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
+        assert isinstance(coords,SkyCoord), "ERROR: cannot parse input coordinates {}".format(coords)
+
         params = {'RA': coords.ra.deg, 'DEC': coords.dec.deg, 'SR':radius}
         # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
