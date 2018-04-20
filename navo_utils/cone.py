@@ -25,12 +25,11 @@ class ConeClass(BaseQuery):
         elif type(services) is astropy.table.row.Row:
             # The user handed one row of an astropy table, e.g., from
             # a registry query, make it look like a list
-            services=[services] 
+            services=Table(services)
         elif type(services) is str:
-            services=[{'access_url':services}]
+            services=Table([{'access_url':services}])
         else:
-            #? 
-            pass 
+            assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or a result from a Registry query."
 
         if len(services) > max_services:
             print("WARNING: You're asking to query more than {} services; I'm only going to do the first {}. If you really mean it, then set the max_services parameter to a larger number than that.".format(len(services),max_services))
