@@ -55,6 +55,8 @@ class RegistryClass(BaseQuery):
         
         
         adql = self._build_adql(**kwargs)
+        if adql is None:
+            return # error should be printed in _build_adql
 
         if kwargs.get('debug'):
             print ('Registry:  sending query ADQL = {}\n'.format(adql))
@@ -113,8 +115,11 @@ class RegistryClass(BaseQuery):
             service_type="simplespectralaccess"
         elif "cone" in service_type.lower():
             service_type="conesearch"
-        else:
+        elif 'tap' in service_type or 'table' in service_type:
             service_type="tableaccess"
+        else:
+            print("ERROR: please give a service_type that is one of image, spectral, cone, or table")
+            return None
     
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,

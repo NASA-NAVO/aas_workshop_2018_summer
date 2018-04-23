@@ -29,11 +29,9 @@ class ConeClass(BaseQuery):
         elif type(services) is str:
             services=Table([{'access_url':services}])
         else:
-            assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or a result from a Registry query."
+            assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or an astropy Table result from a Registry query."
 
-        if len(services) > max_services:
-            print("WARNING: You're asking to query more than {} services; I'm only going to do the first {}. If you really mean it, then set the max_services parameter to a larger number than that.".format(len(services),max_services))
-            services=services[0:max_services-1]
+        assert len(services) <= max_services, "ERROR: You're asking to query more than {} services; max_services is set to {}. If you really want to do more, then set the max_services parameter to a larger number.".format(len(services),max_services)
             
         if type(coords) is str or isinstance(coords,SkyCoord):
             coords=[coords]
