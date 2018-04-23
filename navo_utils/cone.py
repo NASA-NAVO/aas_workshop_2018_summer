@@ -35,7 +35,7 @@ class ConeClass(BaseQuery):
             
         if type(coords) is str or isinstance(coords,SkyCoord):
             coords=[coords]
-        assert type(coords) is list, "ERROR: Give a coordinate object that is a single string, a tuple (ra,dec), a SkyCoord, or a list of any of the above."
+        assert type(coords) is list, "ERROR: Give a coordinate object that is a single string, a list/tuple (ra,dec), a SkyCoord, or a list of any of the above."
 
         if type(inradius) is not list:
             radius =  [inradius]*len(coords)
@@ -58,36 +58,36 @@ class ConeClass(BaseQuery):
         # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
         #Tracer()()
         response=self._request('GET',service,params=params,cache=False)
-        return self._astropy_cone_table_from_votable_response(response)
+        return utils.astropy_table_from_votable_response(response)
 
 
-    def _astropy_cone_table_from_votable_response(self,response):
-        """Need one of these for each class, or one generic standardize()? 
-        
-        For now, just simple conversion. Store the raw XML
-        from the query as well as the URL in the meta data.
-        In future, standardize the columns by replacing the 
-        column name with the UCD if there is one.
-        """
-        #Tracer()()
-        try:
-            table= Table.read(io.BytesIO(response.content))
-            # Store the raw response content and the url queried
-            #  in the meta data of the table. Make its value a list,
-            #  because this will allow us to concatenate (vstack)
-            #  different queries and merge the metadata
-            
-            # TODO:  Consider whether we want to save the raw data for non-debug cases.
-            table.meta['xml_raw']=[response.content]
-            table.meta['url']=[response.url]
-            return table
-        except:
-            # TODO: if this was a real exception, as opposed to being just an empty result, we should put
-            # the exception info into the metadata or somewhere in the table.  Consider more detailed info here too.
-            empty=Table(masked=True)
-            empty.meta['xml_raw']=[response.content]
-            empty.meta['url']=[response.url]
-            return empty
+##      def _astropy_cone_table_from_votable_response(self,response):
+##          """Need one of these for each class, or one generic standardize()? 
+##          
+##          For now, just simple conversion. Store the raw XML
+##          from the query as well as the URL in the meta data.
+##          In future, standardize the columns by replacing the 
+##          column name with the UCD if there is one.
+##          """
+##          #Tracer()()
+##          try:
+##              table= Table.read(io.BytesIO(response.content))
+##              # Store the raw response content and the url queried
+##              #  in the meta data of the table. Make its value a list,
+##              #  because this will allow us to concatenate (vstack)
+##              #  different queries and merge the metadata
+##              
+##              # TODO:  Consider whether we want to save the raw data for non-debug cases.
+##              table.meta['xml_raw']=[response.content]
+##              table.meta['url']=[response.url]
+##              return table
+##          except:
+##              # TODO: if this was a real exception, as opposed to being just an empty result, we should put
+##              # the exception info into the metadata or somewhere in the table.  Consider more detailed info here too.
+##              empty=Table(masked=True)
+##              empty.meta['xml_raw']=[response.content]
+##              empty.meta['url']=[response.url]
+##              return empty
 
 Cone=ConeClass()
 
