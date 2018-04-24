@@ -4,6 +4,7 @@ VO Queries
 """
 
 from __future__ import print_function, division
+#from IPython.core.debugger import Tracer
 
 import warnings
 import json
@@ -42,17 +43,17 @@ __all__ = ['Registry', 'RegistryClass']
 class RegistryClass(BaseQuery):
     """
     Registry query class.
-"""
+    """
 
 
     def __init__(self):
 
         super(RegistryClass, self).__init__()
-
+        self._TIMEOUT=3 # seconds
+        self._RETRIES = 2 # total number of times to try
         self._REGISTRY_TAP_SYNC_URL = "http://vao.stsci.edu/RegTAP/TapService.aspx/sync"
 
     def query(self, **kwargs):
-        
         
         adql = self._build_adql(**kwargs)
         if adql is None:
@@ -68,9 +69,9 @@ class RegistryClass(BaseQuery):
             "lang": "ADQL",
             "query": adql
         }
-        
-        response = self._request('POST', url, data=tap_params, cache=False)
-        
+
+        response=utils.try_query(url,post_data=tap_params,timeout=self._TIMEOUT,retries=self._RETRIES)
+
         if kwargs.get('debug'): 
             print('Queried: {}\n'.format(response.url))
         

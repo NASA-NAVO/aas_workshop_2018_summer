@@ -7,8 +7,6 @@ from .registry import Registry
 from . import utils
 from astropy.table import Table, vstack
 import requests, io, astropy
-from requests.exceptions import (Timeout,ReadTimeout,ConnectionError)
-from urllib3.exceptions import ReadTimeoutError
 
 
 
@@ -74,7 +72,6 @@ class ConeClass(BaseQuery):
         
 
     def _one_cone_search(self, coords, radius, service):
-        import urllib3
         if ( type(coords) is tuple or type(coords) is list) and len(coords) == 2:
             coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
         elif type(coords) is str:
@@ -84,31 +81,7 @@ class ConeClass(BaseQuery):
 
         params = {'RA': coords.ra.deg, 'DEC': coords.dec.deg, 'SR':radius}
         
-        # Trial and error with a small timeout shows a variety of exceptions can happen:
-        ## Would be nice to be able to do this, but
-        ## astroquery.BaseQuery._request() doesn't let you. Do we want
-        ## to use that?
-##          try:
-##              response=self._request('GET',service,params=params,cache=False,timeout=self._TIMEOUT,max_retries=self._RETRIES)
-##          except Exception as e:
-##              raise e
-
-        retry = self._RETRIES
-        while retry:
-            try:
-                response=self._request('GET',service,params=params,cache=False,timeout=self._TIMEOUT)
-                retry=0
-            except (Timeout, ReadTimeout, ReadTimeoutError, ConnectionError) as e:
-                retry=retry-1
-                if retry==0: 
-                    print("ERROR: Got another timeout; quitting.")
-                    #Tracer()()
-                    raise e
-                else:
-                    print("WARNING: Got a timeout; trying again.")
-            except:
-                raise
-
+        response=utils.try_query(service,get_params=params,timeout=self._TIMEOUT,retries=self._RETRIES)
 
         return utils.astropy_table_from_votable_response(response)
 
