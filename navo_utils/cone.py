@@ -7,12 +7,33 @@ from .registry import Registry
 from . import utils
 from astropy.table import Table, vstack
 import requests, io, astropy
+from requests.exceptions import (Timeout,ReadTimeout,ConnectionError)
+from urllib3.exceptions import ReadTimeoutError
+
+
 
 class ConeClass(BaseQuery):
     def __init__(self):
         super(ConeClass, self).__init__()
+        self._TIMEOUT=3 # seconds to timeout
+        self._RETRIES = 3 # total number of times to try
 
     def query(self, coords, inradius, services=None, max_services=10, **kwargs):
+        """Basic cone search query function 
+
+        Input coords should be either a single string, a single
+        SkyCoord object, or a list. It will then loop over the objects
+        in the list, assuming each is a single source. Within the
+        _one_cone_search function, it then expects likewise a single
+        string, a single SkyCoord object, or list of 2 as an RA,DEC
+        pair.
+
+        Input services can be a string URL, an astropy Table returned
+        from Registry.query() (or selected from it), or a single row
+        of an astropy Table. If none is given, the kwargs will be
+        passed to a Registry.query() call. 
+
+        """
             
         #Tracer()()
         # Get the list of URLs that provide matching cone searches 
@@ -28,6 +49,9 @@ class ConeClass(BaseQuery):
             services=Table(services)
         elif type(services) is str:
             services=Table([{'access_url':services}])
+        elif isinstance(services, Table):
+            # In this case, assume they checked the table and query all of them (?)
+            max_services=len(services)
         else:
             assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or an astropy Table result from a Registry query."
 
@@ -50,14 +74,42 @@ class ConeClass(BaseQuery):
         
 
     def _one_cone_search(self, coords, radius, service):
-        if type(coords) is tuple or ( type(coords) is list and len(coords) == 2):
+        import urllib3
+        if ( type(coords) is tuple or type(coords) is list) and len(coords) == 2:
             coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
-        assert isinstance(coords,SkyCoord), "ERROR: cannot parse input coordinates {}".format(coords)
+        elif type(coords) is str:
+            coords=parse_coordinates(coords)
+        else:
+            assert isinstance(coords,SkyCoord), "ERROR: cannot parse input coordinates {}".format(coords)
 
         params = {'RA': coords.ra.deg, 'DEC': coords.dec.deg, 'SR':radius}
-        # Currently using a GET not a post so that I can debug it by copy-pasting the URL in a browser
-        #Tracer()()
-        response=self._request('GET',service,params=params,cache=False)
+        
+        # Trial and error with a small timeout shows a variety of exceptions can happen:
+        ## Would be nice to be able to do this, but
+        ## astroquery.BaseQuery._request() doesn't let you. Do we want
+        ## to use that?
+##          try:
+##              response=self._request('GET',service,params=params,cache=False,timeout=self._TIMEOUT,max_retries=self._RETRIES)
+##          except Exception as e:
+##              raise e
+
+        retry = self._RETRIES
+        while retry:
+            try:
+                response=self._request('GET',service,params=params,cache=False,timeout=self._TIMEOUT)
+                retry=0
+            except (Timeout, ReadTimeout, ReadTimeoutError, ConnectionError) as e:
+                retry=retry-1
+                if retry==0: 
+                    print("ERROR: Got another timeout; quitting.")
+                    #Tracer()()
+                    raise e
+                else:
+                    print("WARNING: Got a timeout; trying again.")
+            except:
+                raise
+
+
         return utils.astropy_table_from_votable_response(response)
 
 
