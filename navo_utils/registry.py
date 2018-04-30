@@ -124,20 +124,11 @@ class RegistryClass(BaseQuery):
     
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,
-          intf.access_url,res.reference_url,"""
-        if publisher is "":
-            query_retcols = query_retcols + "'' as publisher "
-        else:
-             query_retcols = query_retcols + "role.role_name as publisher "
-             
-        query_retcols = query_retcols + """
+          intf.access_url,res.reference_url,res_role.role_name as publisher
           from rr.capability as cap
             natural join rr.resource as res
             natural join rr.interface as intf 
-            """       
-        if publisher is not "":
-            query_retcols = query_retcols + """ 
-            natural join rr.res_role as role
+		    natural join rr.res_role as res_role
             """
              
         query_where=" where "
@@ -155,8 +146,11 @@ class RegistryClass(BaseQuery):
                 wheres.append("(" + " or ".join(allwavebands) + ")")                    
             else:
                 wheres.append("res.waveband like '%{}%'".format(waveband))
+                
+        wheres.append("res_role.base_role = 'publisher'")
         if publisher is not "":
-            wheres.append("role.base_role = 'publisher' and role.role_name like '%{}%'".format(publisher))
+            wheres.append("res_role.role_name like '%{}%'".format(publisher))
+            
         if keyword is not "":
             keyword_where = """
              (res.res_description like '%{}%' or
