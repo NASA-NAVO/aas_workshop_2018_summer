@@ -204,6 +204,9 @@ class RegistryClass(BaseQuery):
             field_table = 'rr.res_role'
             field = 'role_name'
             query_where_filter = ' where base_role = \'publisher\' '
+        elif field.lower() == 'service_type':
+            field_table = 'rr.capability'
+            field = 'cap_type'
            
         if field_table is None:
             return None
