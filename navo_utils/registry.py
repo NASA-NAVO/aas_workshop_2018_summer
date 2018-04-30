@@ -124,16 +124,22 @@ class RegistryClass(BaseQuery):
     
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,
-          intf.access_url, res.reference_url
+          intf.access_url,res.reference_url,"""
+        if publisher is "":
+            query_retcols = query_retcols + "'' as publisher "
+        else:
+             query_retcols = query_retcols + "role.role_name as publisher "
+             
+        query_retcols = query_retcols + """
           from rr.capability as cap
-          natural join rr.resource as res
-          natural join rr.interface as intf
-          """       
+            natural join rr.resource as res
+            natural join rr.interface as intf 
+            """       
         if publisher is not "":
-            query_retcols=query_retcols+"""
-             natural join rr.res_role as role
-             """
-
+            query_retcols = query_retcols + """ 
+            natural join rr.res_role as role
+            """
+             
         query_where=" where "
         
         wheres=[]
@@ -196,6 +202,7 @@ class RegistryClass(BaseQuery):
     def _build_counts_adql(self, field, minimum=1):
     
         field_table = None
+        field_alias = field
         query_where_filter = ''
         if field.lower() == 'waveband':
             field_table = 'rr.resource'
@@ -207,7 +214,7 @@ class RegistryClass(BaseQuery):
         if field_table is None:
             return None
         else:
-            query_select = 'select ' + field + ', count(' + field + ') as count_field'       
+            query_select = 'select ' + field + ' as ' + field_alias + ', count(' + field + ') as count_field'       
             query_from = ' from ' + field_table    
             query_where_count_min = ' where count_field >= ' + str(minimum)            
             query_group_by = ' group by ' + field                        
