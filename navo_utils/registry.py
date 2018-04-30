@@ -124,7 +124,7 @@ class RegistryClass(BaseQuery):
     
         query_retcols="""
           select res.waveband,res.short_name,cap.ivoid,res.res_description,
-          intf.access_url,res.reference_url,res_role.role_name as publisher
+          intf.access_url,res.reference_url,res_role.role_name as publisher,cap.cap_type as service_type
           from rr.capability as cap
             natural join rr.resource as res
             natural join rr.interface as intf 
