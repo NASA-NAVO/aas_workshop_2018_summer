@@ -211,11 +211,11 @@ class RegistryClass(BaseQuery):
         if field_table is None:
             return None
         else:
-            query_select = 'select ' + field + ' as ' + field_alias + ', count(' + field + ') as count_field'       
+            query_select = 'select ' + field + ' as ' + field_alias + ', count(' + field + ') as count_' + field_alias       
             query_from = ' from ' + field_table    
-            query_where_count_min = ' where count_field >= ' + str(minimum)            
+            query_where_count_min = ' where count_' + field_alias + ' >= ' + str(minimum)            
             query_group_by = ' group by ' + field                        
-            query_order_by = ' order by count_field desc'           
+            query_order_by = ' order by count_' + field_alias + ' desc'           
             
             query = 'select * from (' + query_select + query_from + query_where_filter + query_group_by + ') as count_table' + query_where_count_min + query_order_by                
                 
