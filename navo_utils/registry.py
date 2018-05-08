@@ -59,7 +59,7 @@ class RegistryClass(BaseQuery):
         if adql is None:
             return # error should be printed in _build_adql
 
-        if kwargs.get('debug'):
+        if kwargs.get('verbose'):
             print ('Registry:  sending query ADQL = {}\n'.format(adql))
 
         url = self._REGISTRY_TAP_SYNC_URL
@@ -72,7 +72,7 @@ class RegistryClass(BaseQuery):
 
         response=utils.try_query(url,post_data=tap_params,timeout=self._TIMEOUT,retries=self._RETRIES)
 
-        if kwargs.get('debug'): 
+        if kwargs.get('verbose'): 
             print('Queried: {}\n'.format(response.url))
         
         aptable = utils.astropy_table_from_votable_response(response)        
@@ -173,7 +173,7 @@ class RegistryClass(BaseQuery):
             
         adql = self._build_counts_adql(field, minimum)
 
-        if kwargs.get('debug'):
+        if kwargs.get('verbose'):
             print ('Registry:  sending query ADQL = {}\n'.format(adql))
 
         url = self._REGISTRY_TAP_SYNC_URL
@@ -186,7 +186,7 @@ class RegistryClass(BaseQuery):
         
         response = self._request('POST', url, data=tap_params, cache=False)
         
-        if kwargs.get('debug'):
+        if kwargs.get('verbose'):
             print('Queried: {}\n'.format(response.url))
         
         aptable = utils.astropy_table_from_votable_response(response)        
