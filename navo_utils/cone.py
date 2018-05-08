@@ -16,7 +16,7 @@ class ConeClass(BaseQuery):
         self._TIMEOUT=3 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
-    def query(self, coords, inradius, services=None, max_services=10, **kwargs):
+    def query(self, coords, inradius, service, **kwargs):
         """Basic cone search query function 
 
         Input coords should be either a single string, a single
@@ -26,34 +26,37 @@ class ConeClass(BaseQuery):
         string, a single SkyCoord object, or list of 2 as an RA,DEC
         pair.
 
-        Input services can be a string URL, an astropy Table returned
-        from Registry.query() (or selected from it), or a single row
-        of an astropy Table. If none is given, the kwargs will be
-        passed to a Registry.query() call. 
+        Input service can be a string URL a single row
+        of an astropy Table. 
 
         """
             
-        #Tracer()()
-        # Get the list of URLs that provide matching cone searches 
-        #
-        if services is None: 
-            try:
-                services=Registry.query(service_type='cone',**kwargs)
-            except:
-                raise 
-        elif type(services) is astropy.table.row.Row:
-            # The user handed one row of an astropy table, e.g., from
-            # a registry query, make it look like a list
-            services=Table(services)
-        elif type(services) is str:
-            services=Table([{'access_url':services}])
-        elif isinstance(services, Table):
-            # In this case, assume they checked the table and query all of them (?)
-            max_services=len(services)
-        else:
-            assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or an astropy Table result from a Registry query."
+##        #Tracer()()
+##        # Get the list of URLs that provide matching cone searches 
+##        #
+##        if services is None: 
+##            try:
+##                services=Registry.query(service_type='cone',**kwargs)
+##            except:
+##                raise 
+##        elif type(services) is astropy.table.row.Row:
+##            # The user handed one row of an astropy table, e.g., from
+##            # a registry query, make it look like a list
+##            services=Table(services)
+##        elif type(services) is str:
+##            services=Table([{'access_url':services}])
+##        elif isinstance(services, Table):
+##            # In this case, assume they checked the table and query all of them (?)
+##            max_services=len(services)
+##        else:
+##            assert isinstance(services, Table), "ERROR: Don't understand services given; expect a string URL or an astropy Table result from a Registry query."
+##
+##
+##        assert len(services) <= max_services, "ERROR: You're asking to query more than {} services; max_services is set to {}. If you really want to do more, then set the max_services parameter to a larger number.".format(len(services),max_services)
+    
+        if type(service) is str:
+            service={"access_url":service}
 
-        assert len(services) <= max_services, "ERROR: You're asking to query more than {} services; max_services is set to {}. If you really want to do more, then set the max_services parameter to a larger number.".format(len(services),max_services)
             
         if type(coords) is str or isinstance(coords,SkyCoord):
             coords=[coords]
@@ -68,7 +71,7 @@ class ConeClass(BaseQuery):
         # Construct list of dictionaries, each with the parameters needed 
         # for the function you're calling in the query_loop:
         params=[{'coords':c,'radius':radius[i]} for i,c in enumerate(coords)] 
-        return utils.query_loop(self._one_cone_search, services=services, params=params, max_services=max_services)
+        return utils.query_loop(self._one_cone_search, service=service, params=params)
         
 
     def _one_cone_search(self, coords, radius, service):

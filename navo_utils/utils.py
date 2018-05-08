@@ -297,13 +297,13 @@ def stringify_table(t):
 
             
 
-def query_loop(query_function, services, params, max_services=10, quiet=False):
+def query_loop_2level(query_function, services, params, max_services=10, verbose=True):
     # If there's more than one service URL found, then loop
     all_results=[]
     print("Found {} services to query.".format(len(services)))
     for i,service in enumerate(services):
         if i>=max_services: break
-        if not quiet:
+        if verbose:
             print("    Querying service {}".format(html.unescape(service['access_url'])))
         # Initialize a table to add results to:
         service_results=[]  
@@ -311,7 +311,7 @@ def query_loop(query_function, services, params, max_services=10, quiet=False):
     
             result=query_function(service=html.unescape(service['access_url']),**param)
             # Need a test that we got something back. Shouldn't error if not, just be empty
-            if not quiet:
+            if verbose:
                 if len(result) > 0:
                     print("    Got {} results for source number {}".format(len(result),j))
                     #Tracer()() 
@@ -323,6 +323,25 @@ def query_loop(query_function, services, params, max_services=10, quiet=False):
         
         all_results.append(service_results)
     return all_results
+
+def query_loop(query_function, service, params, verbose=True):
+    # Only one service, which is expected to be a row of a Registry query result that has  service['access_url']
+    if verbose: print("    Querying service {}".format(html.unescape(service['access_url'])))
+    # Initialize a table to add results to:
+    service_results=[]  
+    for j,param in enumerate(params):
+
+        result=query_function(service=html.unescape(service['access_url']),**param)
+        # Need a test that we got something back. Shouldn't error if not, just be empty
+        if verbose:
+            if len(result) > 0:
+                print("    Got {} results for source number {}".format(len(result),j))
+                #Tracer()() 
+            else:
+                print("    (Got no results for source number {})".format(j))
+
+        service_results.append(result)                
+    return service_results
 
 
 def try_query(url,retries=3,timeout=3,get_params=None,post_data=None):
