@@ -136,6 +136,10 @@ class RegistryClass(BaseQuery):
         wheres=[]
         if service_type is not "":
             wheres.append("cap.cap_type='{}'".format(service_type))
+            
+        #currently not supporting SIAv2 in SIA library.    
+        if service_type == 'simpleimageaccess':
+            wheres.append("standard_id != 'ivo://ivoa.net/std/sia#query-2.0'")
         if source is not "":
             wheres.append("cap.ivoid like '%{}%'".format(source))
         if waveband is not "":
