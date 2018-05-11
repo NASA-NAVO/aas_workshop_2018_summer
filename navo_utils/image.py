@@ -17,7 +17,8 @@ class ImageClass(BaseQuery):
         self._TIMEOUT=3 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
-    def query(self, coords, service, inradius='0.000001'):
+
+    def query(self, service, coords, inradius='0.000001', image_format=None):
         """Basic image search query function 
 
         Input coords should be either a single string, a single
@@ -33,6 +34,7 @@ class ImageClass(BaseQuery):
         passed to a Registry.query() call. 
 
         """
+        
         if type(service) is str:
             service={"access_url":service}
         
@@ -46,12 +48,13 @@ class ImageClass(BaseQuery):
             radius = inradius            
             assert len(radius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
 
-        # Construct list of dictionaries, each with the parameters needed 
-        # for the function you're calling in the query_loop:
-        params=[{'coords':c,'radius':radius[i]} for i,c in enumerate(coords)] 
+
+        # Expand the input parameters to a list of input parameter dictionaries for the call to query_loop.
+        params=[{'coords':c,'radius':radius[i], 'image_format':image_format} for i,c in enumerate(coords)] 
+        
         return utils.query_loop(self._one_image_search, service=service, params=params)
         
-    def _one_image_search(self, coords, radius, service):
+    def _one_image_search(self, coords, radius, service, image_format=None):
         if ( type(coords) is tuple or type(coords) is list) and len(coords) == 2:
             coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
         elif type(coords) is str:
@@ -62,9 +65,11 @@ class ImageClass(BaseQuery):
         #params = {'RA': coords.ra.deg, 'DEC': coords.dec.deg, 'SR':radius}
         params = {
             'POS': utils.sval(coords.ra.deg) + ',' + utils.sval(coords.dec.deg),
-            'SIZE': radius,
-            'FORMAT': 'ALL' #image_formats
+            'SIZE': radius
         }
+        if (image_format is not None):
+            params['FORMAT'] = image_format
+            
         response=utils.try_query(service,get_params=params,timeout=self._TIMEOUT,retries=self._RETRIES)
         return utils.astropy_table_from_votable_response(response)
 
