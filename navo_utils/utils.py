@@ -335,10 +335,10 @@ def query_loop(query_function, service, params, verbose=True):
         # Need a test that we got something back. Shouldn't error if not, just be empty
         if verbose:
             if len(result) > 0:
-                print("    Got {} results for source number {}".format(len(result),j))
+                print("    Got {} results for parameters[{}]".format(len(result),j))
                 #Tracer()() 
             else:
-                print("    (Got no results for source number {})".format(j))
+                print("    (Got no results for parameters[{}])".format(j))
 
         service_results.append(result)                
     return service_results

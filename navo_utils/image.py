@@ -17,7 +17,8 @@ class ImageClass(BaseQuery):
         self._TIMEOUT=3 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
-    def query(self, coords, service, inradius='0.000001', image_format="ALL"):
+
+    def query(self, service, coords, inradius='0.000001', image_format=None):
         """Basic image search query function 
 
         Input coords should be either a single string, a single
@@ -36,6 +37,7 @@ class ImageClass(BaseQuery):
                     FITS, PNG, JPEG/JPG (default = ALL)
 
         """
+        
         if type(service) is str:
             service={"access_url":service}
         
@@ -49,29 +51,31 @@ class ImageClass(BaseQuery):
             radius = inradius            
             assert len(radius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
         # Passing along proper image format parameters:
-        print(image_format)
-        if "fits" in image_format.lower():
-            image_format="image/fits"
-        elif "jpeg" in image_format.lower():
-            image_format="image/jpeg"
-        elif "jpg" in image_format.lower():
-            image_format="image/jpeg"
-        elif "png" in image_format.lower():
-            image_format="image/png"
-        elif "graphics" in image_format.lower():
-            image_format="GRAPHICS"
-        elif "all" in image_format.lower():
-            image_format="ALL"
-        else:
-            print("ERROR: please give a image_format that is one of FITS, JPEG, PNG, ALL, or GRAPHICS")
-            return None
+        # print(image_format)
+        if image_format is not None:
+            if "fits" in image_format.lower():
+                image_format="image/fits"
+            elif "jpeg" in image_format.lower():
+                image_format="image/jpeg"
+            elif "jpg" in image_format.lower():
+                image_format="image/jpeg"
+            elif "png" in image_format.lower():
+                image_format="image/png"
+            elif "graphics" in image_format.lower():
+                image_format="GRAPHICS"
+            elif "all" in image_format.lower():
+                image_format="ALL"
+            else:
+                print("ERROR: please give a image_format that is one of FITS, JPEG, PNG, ALL, or GRAPHICS")
+                return None
 
-        # Construct list of dictionaries, each with the parameters needed 
-        # for the function you're calling in the query_loop:
+
+        # Expand the input parameters to a list of input parameter dictionaries for the call to query_loop.
         params=[{'coords':c,'radius':radius[i], 'image_format':image_format} for i,c in enumerate(coords)] 
+        
         return utils.query_loop(self._one_image_search, service=service, params=params)
         
-    def _one_image_search(self, coords, radius, service, image_format):
+    def _one_image_search(self, coords, radius, service, image_format=None):
         if ( type(coords) is tuple or type(coords) is list) and len(coords) == 2:
             coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
         elif type(coords) is str:
@@ -83,9 +87,12 @@ class ImageClass(BaseQuery):
         params = {
             'POS': utils.sval(coords.ra.deg) + ',' + utils.sval(coords.dec.deg),
             'SIZE': utils.sval(2.*float(radius)),   #Note: size in SIA is diameter, not radius!
-            'FORMAT': image_format #image_formats, default is ALL
-        }
-        response=utils.try_query(service,get_params=params,timeout=self._TIMEOUT,retries=self._RETRIES)
+            }
+        if (image_format is not None):
+            params['FORMAT'] = image_format
+            
+        response=utils.try_query(service,get_params=params,
+                timeout=self._TIMEOUT,retries=self._RETRIES)
         return utils.astropy_table_from_votable_response(response)
 
 
