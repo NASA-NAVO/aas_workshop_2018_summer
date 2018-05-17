@@ -9,6 +9,7 @@ from astropy.table import Table, vstack
 import requests, io, astropy 
 import urllib.request
 from astropy.utils.data import download_file
+from enum import Enum
 
 
 class ImageClass(BaseQuery):
@@ -122,5 +123,54 @@ class ImageClass(BaseQuery):
         # simple wrapper of urllib
         urllib.request.urlretrieve(url, filename=filename)
         return
+    
+    def get_column_name(self, table, mnemonic):
+        if not isinstance(mnemonic, ImageColumn):
+            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
+        elif not isinstance(table, Table):
+            raise ValueError('table must be an instance of astropy.Table.')
+        else:
+            col = utils.find_column_by_ucd(table, mnemonic.value)
+            if col is None:
+                raise Exception(f'Column {mnemonic} (UCD {mnemonic.value}) not found in table.')
+            else:
+                name = col.name
+                
+        return name
+            
+    
 
 Image=ImageClass()
+
+class ImageColumn(Enum):
+    # Required columns
+    TITLE = 'VOX:Image_Title'
+    RA = 'POS_EQ_RA_MAIN'
+    DEC = 'POS_EQ_DEC_MAIN'
+    NAXES = 'VOX:Image_Naxes'
+    NAXIS = 'VOX:Image_Naxis'
+    SCALE = 'VOX:Image_Scale'
+    FORMAT = 'VOX:Image_Format'
+    ACCESS_URL = 'VOX:Image_AccessReference'
+    
+    # "Should have" columns
+    INSTRUMENT = 'INST_ID'
+    MJD_OBS = 'VOX:Image_MJDateObs'
+    REF_FRAME = 'VOX:STC_CoordRefFrame'
+    BANDPASS = 'VOX:BandPass_ID'
+    BANDPASS_UNIT = 'VOX:BandPass_Unit'
+    BANDPASS_REFVAL = 'VOX:BandPass_RefValue'
+    BANDPASS_HILIMIT = 'VOX:BandPass_HiLimit'
+    BANDPASS_LOLIMIT = 'VOX:BandPass_LoLimit'
+    PIXFLAGS = 'VOX:Image_PixFlags'
+    FILESIZE = 'VOX:Image_FileSize'
+    
+    # WCS (also "should have")
+    PROJECTION = 'VOX:WCS_CoordProjection'
+    CRPIX = 'VOX:WCS_CoordRefPixel'
+    CRVAL = 'VOX:WCS_CoordRefValue'
+    CDMATRIX = 'VOX:WCS_CDMatrix'
+    
+    
+from astroquery.mast import Observations
+from astropy.utils.data import download_file

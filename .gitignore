@@ -1,3 +1,6 @@
+# Files in downloads directory
+downloads/*
+
 # Compiled files
 *.py[cod]
 *.a
