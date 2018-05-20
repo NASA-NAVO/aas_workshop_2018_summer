@@ -8,6 +8,7 @@ import numpy as np
 from astropy.table import Table, unique
 from IPython.core.debugger import Tracer
 import html # to unescape, which shouldn't be neccessary but currently is
+
 #
 # Support for VOTABLEs as astropy tables
 #
@@ -130,41 +131,6 @@ def find_column_by_utype(table, utype):
                 return col
     
     return None
-#
-# Wrappers for Virtual Observatory queries
-#
-
-def tap_query(query, tap_service):
-    """
-    Executes the specified TAP query at the specified TAP service and returns
-    the result as an astropy Table.  This function assumes that tap_service is
-    a synchronous TAP service URL.
-    
-    Parameters
-    ----------
-    query : str
-        ADQL (SQL-like) to execute on the given TAP service.
-    tap_service : str
-        URL endpoint for the desired synchronous TAP service.  This URL will be
-        the endpoint for the TAP service identified in the NAVO registry, followed by '/sync'.
-    
-    Returns
-    -------
-    astropy.table.Table
-        An astropy table created from the contents of the VOTABLE response from the TAP query.
-           
-    """
-    tap_params = {
-        "request": "doQuery",
-        "lang": "ADQL",
-        "query": query
-    }
-    results = requests.get(tap_service, data=tap_params)
-    print('Queried: ' + results.url)
-
-    aptable = astropy_table_from_votable_response(results)
-    return aptable
-
 
 #
 # Functions to help replace bytes with strings in astropy tables that came from VOTABLEs
@@ -238,33 +204,6 @@ def stringify_table(t):
 
     for colname in scols:
         t[colname] = sval_whole_column(t[colname])      
-        
-def query_loop_2level(query_function, services, params, max_services=10, verbose=True):
-    # If there's more than one service URL found, then loop
-    all_results=[]
-    print("Found {} services to query.".format(len(services)))
-    for i,service in enumerate(services):
-        if i>=max_services: break
-        if verbose:
-            print("    Querying service {}".format(html.unescape(service['access_url'])))
-        # Initialize a table to add results to:
-        service_results=[]  
-        for j,param in enumerate(params):
-    
-            result=query_function(service=html.unescape(service['access_url']),**param)
-            # Need a test that we got something back. Shouldn't error if not, just be empty
-            if verbose:
-                if len(result) > 0:
-                    print("    Got {} results for source number {}".format(len(result),j))
-                    #Tracer()() 
-                else:
-                    print("    (Got no results for source number {})".format(j))
-            
-            service_results.append(result)                
-        #Tracer()()
-        
-        all_results.append(service_results)
-    return all_results
 
 def query_loop(query_function, service, params, verbose=False):
     # Only one service, which is expected to be a row of a Registry query result that has  service['access_url']
