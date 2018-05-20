@@ -5,12 +5,12 @@ VO Queries
 
 from __future__ import print_function, division
 #from IPython.core.debugger import Tracer
-from . import utils
-
 from astroquery.query import BaseQuery
 
+from . import utils
+
 __all__ = ['Tap', 'TapClass']
-    
+
 class TapClass(BaseQuery):
     """
     Tap query class.
@@ -24,21 +24,21 @@ class TapClass(BaseQuery):
         self._RETRIES = 1 # total number of times to try
 
     def query(self, service, query, verbose=False, **kwargs):
-        
+
         if type(service) is str:
             service = {"access_url":service}
 
         url = service['access_url'] + '/sync?'
-        
+
         tap_params = {
             "request": "doQuery",
             "lang": "ADQL",
             "query": query
         }
 
-        response=utils.try_query(url, post_data=tap_params, timeout=self._TIMEOUT, retries=self._RETRIES)
-        
-        aptable = utils.astropy_table_from_votable_response(response)        
-        return aptable            
+        response = utils.try_query(url, post_data=tap_params, timeout=self._TIMEOUT, retries=self._RETRIES)
+
+        aptable = utils.astropy_table_from_votable_response(response)
+        return aptable
 
 Tap = TapClass()
