@@ -6,35 +6,8 @@ VO Queries
 from __future__ import print_function, division
 #from IPython.core.debugger import Tracer
 
-import warnings
-import json
-import time
-import os
-import re
-#import keyring
-import io
 from . import utils
-
-import numpy as np
-
-from requests import HTTPError
-from getpass import getpass
-from base64 import b64encode
-
-import astropy.units as u
-import astropy.coordinates as coord
-
-from astropy.table import Table, Row, vstack, MaskedColumn
-from astropy.utils.exceptions import AstropyWarning
-from astropy.logger import log
-
 from astroquery.query import BaseQuery
-from astroquery.utils import commons, async_to_sync
-from astroquery.utils.class_or_instance import class_or_instance
-from astroquery.exceptions import (TimeoutError, InvalidQueryError, RemoteServiceError,
-                          LoginError, ResolverError, MaxResultsWarning,
-                          NoResultsWarning, InputWarning, AuthenticationWarning)
-
 
 __all__ = ['Registry', 'RegistryClass']
     
@@ -47,7 +20,7 @@ class RegistryClass(BaseQuery):
     def __init__(self):
 
         super(RegistryClass, self).__init__()
-        self._TIMEOUT=3 # seconds
+        self._TIMEOUT = 3 # seconds
         self._RETRIES = 2 # total number of times to try
         self._REGISTRY_TAP_SYNC_URL = "http://vao.stsci.edu/RegTAP/TapService.aspx/sync"
 
@@ -68,7 +41,7 @@ class RegistryClass(BaseQuery):
             "query": adql
         }
 
-        response=utils.try_query(url,post_data=tap_params,timeout=self._TIMEOUT,retries=self._RETRIES)
+        response = utils.try_query(url, post_data=tap_params, timeout=self._TIMEOUT, retries=self._RETRIES)
 
         if kwargs.get('verbose'): 
             print('Queried: {}\n'.format(response.url))
@@ -109,13 +82,13 @@ class RegistryClass(BaseQuery):
         
         ##
         if "image" in service_type.lower():
-            service_type="simpleimageaccess"
+            service_type = "simpleimageaccess"
         elif "spectr" in service_type.lower():
-            service_type="simplespectralaccess"
+            service_type = "simplespectralaccess"
         elif "cone" in service_type.lower():
-            service_type="conesearch"
+            service_type = "conesearch"
         elif 'tap' in service_type or 'table' in service_type:
-            service_type="tableaccess"
+            service_type = "tableaccess"
         else:
             print("ERROR: please give a service_type that is one of image, spectral, cone, or table")
             return None
@@ -131,7 +104,7 @@ class RegistryClass(BaseQuery):
              
         query_where=" where "
         
-        wheres=[]
+        wheres = []
         if service_type is not "":
             wheres.append("cap.cap_type='{}'".format(service_type))
             
@@ -142,7 +115,7 @@ class RegistryClass(BaseQuery):
             wheres.append("cap.ivoid like '%{}%'".format(source))
         if waveband is not "":
             if ',' in waveband:
-                allwavebands=[]
+                allwavebands = []
                 for w in waveband.split(','):
                     allwavebands.append("res.waveband like '%{}%' ".format(w).strip())
                 wheres.append("(" + " or ".join(allwavebands) + ")")                    
@@ -165,9 +138,10 @@ class RegistryClass(BaseQuery):
         
         if order_by is not "":
             query_order="order by {}".format(order_by)
-        else: query_order=""
+        else: 
+            query_order = ""
         
-        query=query_retcols+query_where+query_order
+        query = query_retcols+query_where+query_order
         
         return query
         
@@ -237,19 +211,3 @@ def display_results(results):
         print (row['res_description'])
         print (f'(More info: {row["reference_url"]} )')
 
-def main():
-    results = Registry.query(source='nasa.heasarc', service_type='image')
-    
-    display_results(results)    
-    
-
-
-#
-# Main program
-#
-    
-if __name__ == "__main__":
-    import sys
-    #fib(int(sys.argv[1]))
-    main()
-    

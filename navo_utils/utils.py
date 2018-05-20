@@ -2,10 +2,9 @@
 # Imports
 #
 
-import requests
-import io, re
+import io
 import numpy as np
-from astropy.table import Table, unique
+from astropy.table import Table
 from IPython.core.debugger import Tracer
 import html # to unescape, which shouldn't be neccessary but currently is
 
@@ -50,11 +49,11 @@ def astropy_table_from_votable_response(response):
         aptable = Table.read(file_like_content, format='votable')
     except Exception as e:
         print("ERROR parsing response as astropy Table: looks like the content isn't the expected VO table XML? Returning an empty table. Look at its meta data to debug.") 
-        aptable=Table()
+        aptable = Table()
         #raise e
 
-    aptable.meta['url']=response.url
-    aptable.meta['text']=response.text
+    aptable.meta['url'] = response.url
+    aptable.meta['text'] = response.text
     # String values in the VOTABLE are stored in the astropy Table as bytes instead 
     # of strings.  To makes accessing them more convenient, we will convert all those
     # bytes values to strings.
@@ -91,8 +90,8 @@ def find_column_by_ucd(table, ucd):
     for key in table.columns:
         col = table.columns[key]
         ucdval = col.meta.get('ucd')
-        if (ucdval is not None):
-            if (ucd == ucdval):
+        if ucdval is not None:
+            if ucd == ucdval:
                 return col
     
     return None
@@ -126,8 +125,8 @@ def find_column_by_utype(table, utype):
     for key in table.columns:
         col = table.columns[key]
         utypeval = col.meta.get('utype')
-        if (utypeval is not None):
-            if (utype == utypeval):
+        if utypeval is not None:
+            if utype == utypeval:
                 return col
     
     return None
@@ -151,7 +150,7 @@ def sval(val):
     string
         The input value converted (if needed) to a string
     """
-    if (isinstance(val, bytes)):
+    if isinstance(val, bytes):
         return str(val, 'utf-8')
     else:
         return str(val)
@@ -193,7 +192,7 @@ def stringify_table(t):
         The same table as input, but with bytes-valued cells replaced by strings.
     """
     # This mess will look for columns that should be strings and convert them.
-    if (len(t) is 0):
+    if len(t) is 0:
         return   # Nothing to convert
     
     scols = []
@@ -209,14 +208,14 @@ def query_loop(query_function, service, params, verbose=False):
     # Only one service, which is expected to be a row of a Registry query result that has  service['access_url']
     if verbose: print("    Querying service {}".format(html.unescape(service['access_url'])))
     # Initialize a table to add results to:
-    service_results=[]  
-    for j,param in enumerate(params):
+    service_results = []  
+    for j, param in enumerate(params):
 
-        result=query_function(service=html.unescape(service['access_url']),**param)
+        result = query_function(service=html.unescape(service['access_url']), **param)
         # Need a test that we got something back. Shouldn't error if not, just be empty
         if verbose:
             if len(result) > 0:
-                print("    Got {} results for parameters[{}]".format(len(result),j))
+                print("    Got {} results for parameters[{}]".format(len(result), j))
                 #Tracer()() 
             else:
                 print("    (Got no results for parameters[{}])".format(j))
@@ -225,14 +224,14 @@ def query_loop(query_function, service, params, verbose=False):
     return service_results
 
 
-def try_query(url,retries=3,timeout=3,get_params=None,post_data=None):
+def try_query(url, retries=3, timeout=3, get_params=None, post_data=None):
     """ A wrapper to the astroquery _request() function allowing for retries
     """
-    from requests.exceptions import (Timeout,ReadTimeout,ConnectionError)
+    from requests.exceptions import (Timeout,ReadTimeout)
     from urllib3.exceptions import ReadTimeoutError
     from astroquery.query import BaseQuery
 
-    bq=BaseQuery()
+    bq = BaseQuery()
     retry = retries
     assert get_params is not None or post_data is not None, "Give either get_params or post_data"
         
@@ -240,13 +239,13 @@ def try_query(url,retries=3,timeout=3,get_params=None,post_data=None):
     while retry:
         try:
             if post_data is not None:
-                response = bq._request('POST', url, data=post_data, cache=False,timeout=timeout)
+                response = bq._request('POST', url, data=post_data, cache=False, timeout=timeout)
             else:
-                response = bq._request('GET', url, params=get_params, cache=False,timeout=timeout)
-            retry=0
+                response = bq._request('GET', url, params=get_params, cache=False, timeout=timeout)
+            retry = 0
         except (Timeout, ReadTimeout, ReadTimeoutError, ConnectionError) as e:
-            retry=retry-1
-            if retry==0: 
+            retry = retry-1
+            if retry == 0: 
                 print("ERROR: Got another timeout; quitting.")
                 #Tracer()()
                 raise e

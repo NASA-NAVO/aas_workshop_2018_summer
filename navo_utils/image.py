@@ -2,13 +2,8 @@ from IPython.core.debugger import Tracer
 from astroquery.query import BaseQuery
 from astroquery.utils import parse_coordinates
 from astropy.coordinates import SkyCoord
-import html # to unescape, which shouldn't be neccessary but currently is
-from . registry import Registry
 from . import utils
-from astropy.table import Table, vstack
-import requests, io, astropy 
-import urllib.request
-from astropy.utils.data import download_file
+from astropy.table import Table
 from enum import Enum
 
 
@@ -17,7 +12,7 @@ __all__ = ['Image', 'ImageClass']
 class ImageClass(BaseQuery):
     def __init__(self):
         super(ImageClass, self).__init__()
-        self._TIMEOUT=30 # seconds to timeout
+        self._TIMEOUT = 30 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
 
@@ -42,44 +37,44 @@ class ImageClass(BaseQuery):
         """
         
         if type(service) is str:
-            service={"access_url":service}
+            service = {"access_url":service}
         
-        if type(coords) is str or isinstance(coords,SkyCoord):
-            coords=[coords]
+        if type(coords) is str or isinstance(coords, SkyCoord):
+            coords = [coords]
         assert type(coords) is list, "ERROR: Give a coordinate object that is a single string, a list/tuple (ra,dec), a SkyCoord, or a list of any of the above."
 #        Tracer()()
         if type(radius) is not list:
-            inradius =  [radius]*len(coords)
+            inradius = [radius]*len(coords)
         else:
             inradius = radius            
             assert len(inradius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
         # Passing along proper image format parameters:
         if image_format is not None:
             if "fits" in image_format.lower():
-                image_format="image/fits"
+                image_format = "image/fits"
             elif "jpeg" in image_format.lower():
-                image_format="image/jpeg"
+                image_format = "image/jpeg"
             elif "jpg" in image_format.lower():
-                image_format="image/jpeg"
+                image_format = "image/jpeg"
             elif "png" in image_format.lower():
-                image_format="image/png"
+                image_format = "image/png"
             elif "graphics" in image_format.lower():
-                image_format="GRAPHICS"
+                image_format = "GRAPHICS"
             elif "all" in image_format.lower():
-                image_format="ALL"
+                image_format = "ALL"
             else:
                 raise Exception("ERROR: please give a image_format that is one of FITS, JPEG, PNG, ALL, or GRAPHICS")
 
         # Expand the input parameters to a list of input parameter dictionaries for the call to query_loop.
-        params=[{'coords':c,'radius':inradius[i], 'image_format':image_format} for i,c in enumerate(coords)] 
+        params = [{'coords':c, 'radius':inradius[i], 'image_format':image_format} for i, c in enumerate(coords)] 
         
         return utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
         
     def _one_image_search(self, coords, radius, service, image_format=None):
-        if ( type(coords) is tuple or type(coords) is list) and len(coords) == 2:
-            coords=parse_coordinates("{} {}".format(coords[0],coords[1]))
+        if (type(coords) is tuple or type(coords) is list) and len(coords) == 2:
+            coords = parse_coordinates("{} {}".format(coords[0], coords[1]))
         elif type(coords) is str:
-            coords=parse_coordinates(coords)
+            coords = parse_coordinates(coords)
         else:
             assert isinstance(coords,SkyCoord), "ERROR: cannot parse input coordinates {}".format(coords)
 
@@ -90,7 +85,7 @@ class ImageClass(BaseQuery):
         if (image_format is not None):
             params['FORMAT'] = image_format
             
-        response=utils.try_query(service, get_params=params, timeout=self._TIMEOUT, retries=self._RETRIES)
+        response = utils.try_query(service, get_params=params, timeout=self._TIMEOUT, retries=self._RETRIES)
         return utils.astropy_table_from_votable_response(response)
     
     def get_column(self, table, mnemonic):
@@ -112,7 +107,7 @@ class ImageClass(BaseQuery):
             
     
 
-Image=ImageClass()
+Image = ImageClass()
 
 class ImageColumn(Enum):
     # Required columns
@@ -143,6 +138,3 @@ class ImageColumn(Enum):
     CRVAL = 'VOX:WCS_CoordRefValue'
     CDMATRIX = 'VOX:WCS_CDMatrix'
     
-    
-from astroquery.mast import Observations
-from astropy.utils.data import download_file
