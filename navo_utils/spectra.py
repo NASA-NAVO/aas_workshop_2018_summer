@@ -11,18 +11,17 @@ import urllib.request
 from astropy.utils.data import download_file
 from enum import Enum
 
+__all__ = ['Spectra', 'SpectraClass']
 
-__all__ = ['Image', 'ImageClass']
-
-class ImageClass(BaseQuery):
+class SpectraClass(BaseQuery):
     def __init__(self):
-        super(ImageClass, self).__init__()
+        super(SpectraClass, self).__init__()
         self._TIMEOUT=30 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
 
     def query(self, service, coords, radius='0.000001', image_format=None, verbose=False):
-        """Basic image search query function 
+        """Basic spectra search query function 
 
         Input coords should be either a single string, a single
         SkyCoord object, or a list. It will then loop over the objects
@@ -35,9 +34,6 @@ class ImageClass(BaseQuery):
         from Registry.query() (or selected from it), or a single row
         of an astropy Table. If none is given, the kwargs will be
         passed to a Registry.query() call. 
-
-        image_format = one of the following options: ALL, GRAPHICS, 
-                    FITS, PNG, JPEG/JPG (default = ALL)
 
         """
         
@@ -95,12 +91,12 @@ class ImageClass(BaseQuery):
     
     def get_column(self, table, mnemonic):
         col = None
-        if not isinstance(mnemonic, ImageColumn):
-            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
+        if not isinstance(mnemonic, SpectraColumn):
+            raise ValueError('mnemonic must be an enumeration member of SpectraColumn.')
         elif not isinstance(table, Table):
             raise ValueError('table must be an instance of astropy.Table.')
         else:
-            col = utils.find_column_by_ucd(table, mnemonic.value)
+            col = utils.find_column_by_utype(table, mnemonic.value)
         return col
     
     def get_column_name(self, table, mnemonic):
@@ -112,37 +108,14 @@ class ImageClass(BaseQuery):
             
     
 
-Image=ImageClass()
+Spectra=SpectraClass()
 
-class ImageColumn(Enum):
+class SpectraColumn(Enum):
     # Required columns
-    TITLE = 'VOX:Image_Title'
-    RA = 'POS_EQ_RA_MAIN'
-    DEC = 'POS_EQ_DEC_MAIN'
-    NAXES = 'VOX:Image_Naxes'
-    NAXIS = 'VOX:Image_Naxis'
-    SCALE = 'VOX:Image_Scale'
-    FORMAT = 'VOX:Image_Format'
-    ACCESS_URL = 'VOX:Image_AccessReference'
+    ACCESS_URL = 'ssa:Access.Reference'
+    FORMAT = 'ssa:Access.Format'
     
     # "Should have" columns
-    INSTRUMENT = 'INST_ID'
-    MJD_OBS = 'VOX:Image_MJDateObs'
-    REF_FRAME = 'VOX:STC_CoordRefFrame'
-    BANDPASS = 'VOX:BandPass_ID'
-    BANDPASS_UNIT = 'VOX:BandPass_Unit'
-    BANDPASS_REFVAL = 'VOX:BandPass_RefValue'
-    BANDPASS_HILIMIT = 'VOX:BandPass_HiLimit'
-    BANDPASS_LOLIMIT = 'VOX:BandPass_LoLimit'
-    PIXFLAGS = 'VOX:Image_PixFlags'
-    FILESIZE = 'VOX:Image_FileSize'
     
     # WCS (also "should have")
-    PROJECTION = 'VOX:WCS_CoordProjection'
-    CRPIX = 'VOX:WCS_CoordRefPixel'
-    CRVAL = 'VOX:WCS_CoordRefValue'
-    CDMATRIX = 'VOX:WCS_CDMatrix'
     
-    
-from astroquery.mast import Observations
-from astropy.utils.data import download_file

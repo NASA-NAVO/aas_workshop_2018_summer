@@ -16,7 +16,7 @@ class ConeClass(BaseQuery):
         self._TIMEOUT=3 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
-    def query(self, coords, inradius, service, **kwargs):
+    def query(self, service, coords, radius, **kwargs):
         """Basic cone search query function 
 
         Input coords should be either a single string, a single
@@ -62,15 +62,15 @@ class ConeClass(BaseQuery):
             coords=[coords]
         assert type(coords) is list, "ERROR: Give a coordinate object that is a single string, a list/tuple (ra,dec), a SkyCoord, or a list of any of the above."
 
-        if type(inradius) is not list:
-            radius =  [inradius]*len(coords)
+        if type(radius) is not list:
+            inradius =  [radius]*len(coords)
         else:
-            radius = inradius            
-            assert len(radius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
+            inradius = inradius            
+            assert len(inradius) == len(coords), 'Please give either single radius or list of radii of same length as coords.'
 
         # Construct list of dictionaries, each with the parameters needed 
         # for the function you're calling in the query_loop:
-        params=[{'coords':c,'radius':radius[i]} for i,c in enumerate(coords)] 
+        params=[{'coords':c,'radius':inradius[i]} for i,c in enumerate(coords)] 
         return utils.query_loop(self._one_cone_search, service=service, params=params)
         
 
