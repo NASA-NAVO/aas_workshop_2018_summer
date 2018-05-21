@@ -83,6 +83,7 @@ class SpectraClass(BaseQuery):
             params['FORMAT'] = image_format
 
         response = utils.try_query(service, get_params=params, timeout=self._TIMEOUT, retries=self._RETRIES)
+        #Tracer()()
         return utils.astropy_table_from_votable_response(response)
 
     def get_column(self, table, mnemonic):
