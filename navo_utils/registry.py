@@ -106,7 +106,7 @@ class RegistryClass(BaseQuery):
 
         wheres = []
         if service_type != "":
-            wheres.append("cap.cap_type='{}'".format(service_type))
+            wheres.append("cap.cap_type like '%{}%'".format(service_type))
 
         #currently not supporting SIAv2 in SIA library.
         if service_type == 'simpleimageaccess':
