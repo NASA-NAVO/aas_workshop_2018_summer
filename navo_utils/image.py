@@ -5,12 +5,12 @@ from IPython.core.debugger import Tracer
 from astroquery.query import BaseQuery
 from astroquery.utils import parse_coordinates
 from astropy.coordinates import SkyCoord
-from astropy.table import Table
+from astropy.table import Table, Row, Column, MaskedColumn, TableColumns, TableFormatter
 from enum import Enum
 
 from . import utils
 
-__all__ = ['Image', 'ImageClass']
+__all__ = ['Image', 'ImageClass', 'ImageTable']
 
 class ImageClass(BaseQuery):
     """
@@ -74,7 +74,13 @@ class ImageClass(BaseQuery):
         # Expand the input parameters to a list of input parameter dictionaries for the call to query_loop.
         params = [{'coords':c, 'radius':inradius[i], 'image_format':image_format} for i, c in enumerate(coords)]
 
-        return utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
+        result_list = utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
+        image_result_list = []
+        for result in result_list:
+            image_table = ImageTable(result, copy=False)
+            image_result_list.append(image_table)
+            
+        return image_result_list
 
     def _one_image_search(self, coords, radius, service, image_format=None):
         if (type(coords) is tuple or type(coords) is list) and len(coords) == 2:
@@ -111,8 +117,8 @@ class ImageClass(BaseQuery):
             name = col.name
         return name
 
-
-
+    
+    
 Image = ImageClass()
 
 class ImageColumn(Enum):
@@ -143,3 +149,90 @@ class ImageColumn(Enum):
     CRPIX = 'VOX:WCS_CoordRefPixel'
     CRVAL = 'VOX:WCS_CoordRefValue'
     CDMATRIX = 'VOX:WCS_CDMatrix'
+
+
+#
+# Custom subclass of astropy Table.
+#
+
+class ImRow(Row):
+    """
+    This Row allows column access by ImageColumn UCD values.
+    """
+    def __getitem__(self, item):
+        if isinstance(item, ImageColumn):
+            colname = self.table.get_ucd_column_name(item)
+            val = None
+            if colname is not None:
+                val = super().__getitem__(colname)
+            return val
+        else:
+            return super().__getitem__(item)
+    
+class ImColumn(Column): pass
+class ImMaskedColumn(MaskedColumn): pass
+class ImTableColumns(TableColumns): pass
+class ImTableFormatter(TableFormatter): pass
+
+class ImageTable(Table):
+    """
+    Custom subclass of astropy.table.Table
+    """
+    
+    Row = ImRow
+    Column = ImColumn
+    MaskedColumn = ImMaskedColumn
+    TableColumns = ImTableColumns
+    TableFormatter = ImTableFormatter
+    
+    __ucdmap__ = None
+    
+
+    def __compute_ucd_column__(self, mnemonic):
+        col = None
+        if not isinstance(mnemonic, ImageColumn):
+            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
+        else:
+            col = utils.find_column_by_ucd(self, mnemonic.value)
+        return col
+
+    def __compute_ucd_column_name__(self, mnemonic):
+        name = None
+        col = self.__compute_ucd_column__(mnemonic)
+        if col is not None:
+            name = col.name
+        return name
+    
+    def get_ucdmap(self):
+        if not self.__ucdmap__:
+            self.__ucdmap__ = {}
+            for ucd in ImageColumn:
+                colname = self.__compute_ucd_column_name__(ucd)
+                self.__ucdmap__[ucd.name] = colname
+        
+        return self.__ucdmap__
+    
+    def get_ucd_column(self, mnemonic):
+        col = None
+        colname = self.get_ucd_column_name
+        if colname is not None:
+            col = self[colname]
+        return col
+    
+    def get_ucd_column_name(self, mnemonic):
+        if not isinstance(mnemonic, ImageColumn):
+            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
+        else:
+            ucdmap = self.get_ucdmap()
+            name = ucdmap.get(mnemonic.name)
+        return name        
+
+    def __getitem__(self, item):
+        if isinstance(item, ImageColumn):
+            colname = self.get_ucd_column_name(item)
+            if colname is None:
+                return None
+            else:
+                return super().__getitem__(colname)
+        else:
+            return super().__getitem__(item)
