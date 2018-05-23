@@ -3,7 +3,6 @@
 VO Queries
 """
 
-from IPython.core.debugger import Tracer
 from astroquery.query import BaseQuery
 from astroquery.utils import parse_coordinates
 from astropy.coordinates import SkyCoord
@@ -20,7 +19,7 @@ class ConeClass(BaseQuery):
         self._TIMEOUT = 60 # seconds to timeout
         self._RETRIES = 3 # total number of times to try
 
-    def query(self, service, coords, radius, **kwargs):
+    def query(self, service, coords, radius, verbose=False):
         """Basic cone search query function
 
         Input coords should be either a single string, a single
@@ -55,7 +54,9 @@ class ConeClass(BaseQuery):
         # Construct list of dictionaries, each with the parameters needed
         # for the function you're calling in the query_loop:
         params = [{'coords':c, 'radius':inradius[i]} for i, c in enumerate(coords)]
-        return utils.query_loop(self._one_cone_search, service=service, params=params)
+
+        result_list = utils.query_loop(self._one_cone_search, service=service, params=params, verbose=verbose)
+        return result_list
 
 
     def _one_cone_search(self, coords, radius, service):

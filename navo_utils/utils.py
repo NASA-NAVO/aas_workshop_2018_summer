@@ -6,7 +6,6 @@ import html # to unescape, which shouldn't be neccessary but currently is
 import io
 import numpy as np
 from astropy.table import Table
-from IPython.core.debugger import Tracer
 
 #
 # Support for VOTABLEs as astropy tables
