@@ -28,7 +28,7 @@ class RegistryClass(BaseQuery):
 
         adql = self._build_adql(**kwargs)
         if adql is None:
-            return # error should be printed in _build_adql
+            raise ValueError('Unable to compute query based on input arguments.')
 
         if kwargs.get('verbose'):
             print('Registry:  sending query ADQL = {}\n'.format(adql))
@@ -64,7 +64,7 @@ class RegistryClass(BaseQuery):
         logic_string = " and "
 
         # Find the keywords we recognize
-        for key,val in kwargs.items():
+        for key, val in kwargs.items():
             if key == 'service_type':
                 service_type = val
             elif key == 'keyword':
@@ -134,10 +134,10 @@ class RegistryClass(BaseQuery):
             """.format(keyword, keyword, keyword)
             wheres.append(keyword_where)
 
-        query_where=query_where+logic_string.join(wheres)
+        query_where = query_where+logic_string.join(wheres)
 
         if order_by != "":
-            query_order="order by {}".format(order_by)
+            query_order = "order by {}".format(order_by)
         else:
             query_order = ""
 

@@ -1,9 +1,8 @@
 from astroquery.query import BaseQuery
 from astroquery.utils import parse_coordinates
 from astropy.coordinates import SkyCoord
-from astropy.table import Table
+from astropy.table import Table, Row
 from enum import Enum
-from IPython.core.debugger import Tracer
 
 from . import utils
 
@@ -65,7 +64,13 @@ class SpectraClass(BaseQuery):
         # Expand the input parameters to a list of input parameter dictionaries for the call to query_loop.
         params = [{'coords':c, 'radius':inradius[i], 'image_format':image_format} for i, c in enumerate(coords)]
 
-        return utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
+        result_list = utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
+        spectra_result_list = []
+        for result in result_list:
+            spectra_table = SpectraTable(result, copy=False)
+            spectra_result_list.append(spectra_table)
+
+        return spectra_result_list
 
     def _one_image_search(self, coords, radius, service, image_format=None):
         if (type(coords) is tuple or type(coords) is list) and len(coords) == 2:
@@ -109,9 +114,117 @@ Spectra = SpectraClass()
 
 class SpectraColumn(Enum):
     # Required columns
-    ACCESS_URL = 'ssa:Access.Reference'
-    FORMAT = 'ssa:Access.Format'
+    ACCESS_URL = {'utype': 'ssa:Access.Reference', 'required': True, 'description': '''
+    URL used to access the dataset
+    '''}
+    FORMAT = {'utype': 'ssa:Access.Format', 'required': True, 'description': '''
+    MIME type of dataset
+    '''}
+    TITLE = {'utype': 'ssa:DataID.Title', 'required': True, 'description': '''
+    Dataset title
+    '''}
+    PUBLISHER = {'utype': 'ssa:Curation.Publisher', 'required': True, 'description': '''
+    Dataset title
+    '''}
+    LENGTH = {'utype': 'ssa:Dataset.Length', 'required': True, 'description': '''
+    Number of points in spectrum
+    '''}
+    POSITION = {'utype': 'ssa:Char.SpatialAxis.Coverage.Location.Value', 'required': True, 'description': '''
+    Space-separated RA Dec tuple, decimal degrees
+    '''}
+    EXTENT = {'utype': 'ssa:Char.SpatialAxis.Coverage.Bounds.Extent', 'required': True, 'description': '''
+    Aperture angular diameter, degrees
+    '''}
 
     # "Should have" columns
+    SIZE = {'utype': 'ssa:Access.Size', 'required': False, 'description': '''
+    Estimated (not actual) dataset size
+    '''}
 
     # WCS (also "should have")
+
+
+#
+# Custom subclass of astropy Table.
+#
+
+class SpRow(Row):
+    """
+    This Row allows column access by SpectraColumn utype values.
+    """
+    def __getitem__(self, item):
+        if isinstance(item, SpectraColumn):
+            colname = self.table.stdcol_to_colname(item)
+            val = None
+            if colname is not None:
+                val = super().__getitem__(colname)
+            return val
+        else:
+            return super().__getitem__(item)
+
+
+class SpectraTable(Table):
+    """
+    Custom subclass of astropy.table.Table
+    """
+
+    Row = SpRow
+
+    __utypemap__ = None
+
+
+    def __compute_utype_column__(self, mnemonic):
+        col = None
+        if not isinstance(mnemonic, SpectraColumn):
+            raise ValueError('mnemonic must be an enumeration member of SpectraColumn.')
+        else:
+            col = utils.find_column_by_utype(self, mnemonic.value['utype'])
+        return col
+
+    def __compute_utype_column_name__(self, mnemonic):
+        name = None
+        col = self.__compute_utype_column__(mnemonic)
+        if col is not None:
+            name = col.name
+        return name
+
+    def get_utypemap(self):
+        if not self.__utypemap__:
+            self.__utypemap__ = {}
+            for utype in SpectraColumn:
+                colname = self.__compute_utype_column_name__(utype)
+                self.__utypemap__[utype.name] = colname
+
+        return self.__utypemap__
+
+    def __getitem__(self, item):
+        if isinstance(item, SpectraColumn):
+            colname = self.stdcol_to_colname(item)
+            if colname is None:
+                return None
+            else:
+                return super().__getitem__(colname)
+        else:
+            return super().__getitem__(item)
+
+    def stdcol_to_colname(self, mnemonic):
+        if not isinstance(mnemonic, SpectraColumn):
+            raise ValueError('mnemonic must be an enumeration member of SpectraColumn.')
+        else:
+            utypemap = self.get_utypemap()
+            name = utypemap.get(mnemonic.name)
+        return name
+
+    def colname_to_stdcol(self, colname):
+        imgcol = None
+        if colname not in self.colnames:
+            raise ValueError(f'colname {colname} is not the name of a column in this table.')
+        else:
+            utypemap = self.get_utypemap()
+            for img, col in utypemap.items():
+                if colname == col:
+                    for e in SpectraColumn:
+                        if e.name == img:
+                            imgcol = e
+
+        return imgcol

@@ -23,7 +23,7 @@ class TapClass(BaseQuery):
         self._TIMEOUT = 60 # seconds
         self._RETRIES = 1 # total number of times to try
 
-    def query(self, service, query, verbose=False, **kwargs):
+    def query(self, service, query):
 
         if type(service) is str:
             service = {"access_url":service}

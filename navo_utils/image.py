@@ -1,12 +1,11 @@
 """
 VO Image Queries
 """
-from IPython.core.debugger import Tracer
+from enum import Enum
 from astroquery.query import BaseQuery
 from astroquery.utils import parse_coordinates
 from astropy.coordinates import SkyCoord
-from astropy.table import Table, Row, Column, MaskedColumn, TableColumns, TableFormatter
-from enum import Enum
+from astropy.table import Table, Row
 
 from . import utils
 
@@ -79,7 +78,7 @@ class ImageClass(BaseQuery):
         for result in result_list:
             image_table = ImageTable(result, copy=False)
             image_result_list.append(image_table)
-            
+
         return image_result_list
 
     def _one_image_search(self, coords, radius, service, image_format=None):
@@ -117,38 +116,106 @@ class ImageClass(BaseQuery):
             name = col.name
         return name
 
-    
-    
+
+
 Image = ImageClass()
 
 class ImageColumn(Enum):
+
     # Required columns
-    TITLE = 'VOX:Image_Title'
-    RA = 'POS_EQ_RA_MAIN'
-    DEC = 'POS_EQ_DEC_MAIN'
-    NAXES = 'VOX:Image_Naxes'
-    NAXIS = 'VOX:Image_Naxis'
-    SCALE = 'VOX:Image_Scale'
-    FORMAT = 'VOX:Image_Format'
-    ACCESS_URL = 'VOX:Image_AccessReference'
+    TITLE = {'ucd': 'VOX:Image_Title', 'required': True, 'description': '''
+    A short (usually one line) description of the image. This should concisely
+    describe the image to a user, typically identifying the image source
+    (e.g., survey name), object name or field coordinates, bandpass/filter, and so forth.
+    '''}
+    RA = {'ucd': 'POS_EQ_RA_MAIN', 'required': True, 'description': '''
+    ICRS right-ascension of the center of the image.
+    '''}
+    DEC = {'ucd': 'POS_EQ_DEC_MAIN', 'required': True, 'description': '''
+    ICRS declination of the center of the image.
+    '''}
+    NAXES = {'ucd': 'VOX:Image_Naxes', 'required': True, 'description': '''
+    The number of image axes.
+    '''}
+    NAXIS = {'ucd': 'VOX:Image_Naxis', 'required': True, 'description': '''
+    Space-separated list giving the length in pixels of each image axis.
+    '''}
+    SCALE = {'ucd': 'VOX:Image_Scale', 'required': True, 'description': '''
+    Space-separated list giving the scale in degrees per pixel of each image axis.
+    '''}
+    FORMAT = {'ucd': 'VOX:Image_Format', 'required': True, 'description': '''
+    The MIME-type of the object associated with the image product, e.g., "image/fits", "image/jpeg, and so forth.
+    '''}
+    ACCESS_URL = {'ucd': 'VOX:Image_AccessReference', 'required': True, 'description': '''
+    The URL to be used to access or retrieve the image. Since the URL may contain XML
+    metacharacters, the URL can be enclosed in an XML CDATA section (<![CDATA[...]]>)
+    or otherwise URL encoded (see URI Specification) to escape any embedded metacharacters.
+    '''}
+
+    # WCS ("should have")
+    PROJECTION = {'ucd': 'VOX:WCS_CoordProjection', 'required': False, 'description': '''
+    Three-character code ("TAN", "ARC", "SIN", and so forth) specifying the celestial
+    projection, as for FITS WCS.
+    '''}
+    CRPIX = {'ucd': 'VOX:WCS_CoordRefPixel', 'required': False, 'description': '''
+    Space-separate list specifying the image pixel coordinates of the WCS reference pixel.
+    This is identical to "CRPIX" in FITS WCS.
+    '''}
+    CRVAL = {'ucd': 'VOX:WCS_CoordRefValue', 'required': False, 'description': '''
+    Space-separated list specifying the world coordinates of the WCS reference pixel.
+    This is identical to "CRVAL" in FITS WCS.
+    '''}
+    CDMATRIX = {'ucd': 'VOX:WCS_CDMatrix', 'required': False, 'description': '''
+    Space-separated list specifying the WCS CD matrix. This is identical to the
+    "CD" term in FITS WCS, and defines the scale and rotation (among other things)
+    of the image. Matrix elements should be ordered as CD[i,j] = [1,1], [1,2], [2,1], [2,2].
+    '''}
 
     # "Should have" columns
-    INSTRUMENT = 'INST_ID'
-    MJD_OBS = 'VOX:Image_MJDateObs'
-    REF_FRAME = 'VOX:STC_CoordRefFrame'
-    BANDPASS = 'VOX:BandPass_ID'
-    BANDPASS_UNIT = 'VOX:BandPass_Unit'
-    BANDPASS_REFVAL = 'VOX:BandPass_RefValue'
-    BANDPASS_HILIMIT = 'VOX:BandPass_HiLimit'
-    BANDPASS_LOLIMIT = 'VOX:BandPass_LoLimit'
-    PIXFLAGS = 'VOX:Image_PixFlags'
-    FILESIZE = 'VOX:Image_FileSize'
-
-    # WCS (also "should have")
-    PROJECTION = 'VOX:WCS_CoordProjection'
-    CRPIX = 'VOX:WCS_CoordRefPixel'
-    CRVAL = 'VOX:WCS_CoordRefValue'
-    CDMATRIX = 'VOX:WCS_CDMatrix'
+    INSTRUMENT = {'ucd': 'INST_ID', 'required': False, 'description': '''
+    The instrument or instruments used to make the observation, e.g., WFPC2.
+    '''}
+    MJD_OBS = {'ucd': 'VOX:Image_MJDateObs', 'required': False, 'description': '''
+    The mean modified Julian date of the observation. By "mean" we mean the midpoint
+    of the observation in terms of normalized exposure times: this is the "characteristic
+    observation time" and is independent of observation duration.
+    '''}
+    REF_FRAME = {'ucd': 'VOX:STC_CoordRefFrame', 'required': False, 'description': '''
+    The coordinate system reference frame, selected from "ICRS", "FK5", "FK4", "ECL", "GAL", and "SGAL".
+    '''}
+    BANDPASS = {'ucd': 'VOX:BandPass_ID', 'required': False, 'description': '''
+    The bandpass by name (e.g., "V", "SDSS_U", "K", "K-Band", etc.).
+    '''}
+    BANDPASS_UNIT = {'ucd': 'VOX:BandPass_Unit', 'required': False, 'description': '''
+    The units used to represent spectral values, selected from "meters", "hertz", and "keV".
+    No other units are permitted here; the client application may of course present a wider
+    range of units in the user interface.
+    '''}
+    BANDPASS_REFVAL = {'ucd': 'VOX:BandPass_RefValue', 'required': False, 'description': '''
+    The characteristic (reference) frequency, wavelength, or energy for the bandpass model.
+    '''}
+    BANDPASS_HILIMIT = {'ucd': 'VOX:BandPass_HiLimit', 'required': False, 'description': '''
+    The upper limit of the bandpass.
+    '''}
+    BANDPASS_LOLIMIT = {'ucd': 'VOX:BandPass_LoLimit', 'required': False, 'description': '''
+    The lower limit of the bandpass.
+    '''}
+    PIXFLAGS = {'ucd': 'VOX:Image_PixFlags', 'required': False, 'description': '''
+    The type of processing done by the image service to produce an output image pixel.
+    The string value should be formed from some combination of the following character codes:
+    C -- The image pixels were copied from a source image without change, as when an atlas image or cutout is returned.
+    F -- The image pixels were computed by resampling an existing image, e.g., to rescale or reproject the data, and were filtered by an interpolator.
+    X -- The image pixels were computed by the service directly from a primary data set hence were not filtered by an interpolator.
+    Z -- The image pixels contain valid flux (intensity) values, e.g., if the pixels were resampled a flux-preserving interpolator was used.
+    V -- The image pixels contain some unspecified visualization of the data, hence are suitable for display but not for numerical analysis.
+    For example, a typical image cutout service would have PixFlags="C", whereas a mosaicing service operating on precomputed images might
+    have PixFlags="FZ". A preview page, graphics image, or a pixel mask might have PixFlags="V". An image produced by sampling and
+    reprojecting a high energy event list might have PixFlags="X". If not specified, PixFlags="C" is assumed.
+    '''}
+    FILESIZE = {'ucd': 'VOX:Image_FileSize', 'required': False, 'description': '''
+    The actual or estimated size of the encoded image in bytes (not pixels!). This is useful for
+    image selection and for optimizing distributed computations.
+    '''}
 
 
 #
@@ -161,39 +228,31 @@ class ImRow(Row):
     """
     def __getitem__(self, item):
         if isinstance(item, ImageColumn):
-            colname = self.table.get_ucd_column_name(item)
+            colname = self.table.stdcol_to_colname(item)
             val = None
             if colname is not None:
                 val = super().__getitem__(colname)
             return val
         else:
             return super().__getitem__(item)
-    
-class ImColumn(Column): pass
-class ImMaskedColumn(MaskedColumn): pass
-class ImTableColumns(TableColumns): pass
-class ImTableFormatter(TableFormatter): pass
+
 
 class ImageTable(Table):
     """
     Custom subclass of astropy.table.Table
     """
-    
+
     Row = ImRow
-    Column = ImColumn
-    MaskedColumn = ImMaskedColumn
-    TableColumns = ImTableColumns
-    TableFormatter = ImTableFormatter
-    
+
     __ucdmap__ = None
-    
+
 
     def __compute_ucd_column__(self, mnemonic):
         col = None
         if not isinstance(mnemonic, ImageColumn):
             raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
         else:
-            col = utils.find_column_by_ucd(self, mnemonic.value)
+            col = utils.find_column_by_ucd(self, mnemonic.value['ucd'])
         return col
 
     def __compute_ucd_column_name__(self, mnemonic):
@@ -202,37 +261,44 @@ class ImageTable(Table):
         if col is not None:
             name = col.name
         return name
-    
+
     def get_ucdmap(self):
         if not self.__ucdmap__:
             self.__ucdmap__ = {}
             for ucd in ImageColumn:
                 colname = self.__compute_ucd_column_name__(ucd)
                 self.__ucdmap__[ucd.name] = colname
-        
+
         return self.__ucdmap__
-    
-    def get_ucd_column(self, mnemonic):
-        col = None
-        colname = self.get_ucd_column_name
-        if colname is not None:
-            col = self[colname]
-        return col
-    
-    def get_ucd_column_name(self, mnemonic):
-        if not isinstance(mnemonic, ImageColumn):
-            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
-        else:
-            ucdmap = self.get_ucdmap()
-            name = ucdmap.get(mnemonic.name)
-        return name        
 
     def __getitem__(self, item):
         if isinstance(item, ImageColumn):
-            colname = self.get_ucd_column_name(item)
+            colname = self.stdcol_to_colname(item)
             if colname is None:
                 return None
             else:
                 return super().__getitem__(colname)
         else:
             return super().__getitem__(item)
+
+    def stdcol_to_colname(self, mnemonic):
+        if not isinstance(mnemonic, ImageColumn):
+            raise ValueError('mnemonic must be an enumeration member of ImageColumn.')
+        else:
+            ucdmap = self.get_ucdmap()
+            name = ucdmap.get(mnemonic.name)
+        return name
+
+    def colname_to_stdcol(self, colname):
+        imgcol = None
+        if colname not in self.colnames:
+            raise ValueError(f'colname {colname} is not the name of a column in this table.')
+        else:
+            ucdmap = self.get_ucdmap()
+            for img, col in ucdmap.items():
+                if colname == col:
+                    for e in ImageColumn:
+                        if e.name == img:
+                            imgcol = e
+
+        return imgcol
