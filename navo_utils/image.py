@@ -246,6 +246,16 @@ class ImageTable(Table):
 
     __ucdmap__ = None
 
+    def __init__(self, table,**kwargs):
+        """ An init that attempts to trap issues and return the meta data for debugging."""
+        try:
+            Table.__init__(self,table,**kwargs)
+            self.table=Table(table,**kwargs)
+        except:
+            print("ERROR parsing result as ImageTable. Setting as empty and appending meta-data")
+            self.table=Table()
+            self.table.meta=table.meta
+
 
     def __compute_ucd_column__(self, mnemonic):
         col = None
