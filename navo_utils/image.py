@@ -83,6 +83,7 @@ class ImageClass(BaseQuery):
                 image_table.meta=result.meta
                 image_result_list.append(image_table)
                 print("ERROR parsing result as ImageTable. Setting as empty and appending meta-data")
+            image_result_list.append(image_table)
 
 #        for result in result_list:
 #            image_table = ImageTable(result, copy=False)
