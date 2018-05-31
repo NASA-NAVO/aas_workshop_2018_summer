@@ -223,7 +223,7 @@ def query_loop(query_function, service, params, verbose=False):
     return service_results
 
 
-def try_query(url, retries=3, timeout=3, get_params=None, post_data=None, files=None):
+def try_query(url, retries=3, timeout=60, get_params=None, post_data=None, files=None):
     """ A wrapper to the astroquery _request() function allowing for retries
     """
     from requests.exceptions import (Timeout, ReadTimeout)
