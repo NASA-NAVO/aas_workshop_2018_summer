@@ -76,8 +76,17 @@ class ImageClass(BaseQuery):
         result_list = utils.query_loop(self._one_image_search, service=service, params=params, verbose=verbose)
         image_result_list = []
         for result in result_list:
-            image_table = ImageTable(result, copy=False)
-            image_result_list.append(image_table)
+            try:
+                image_table = ImageTable(result, copy=False)
+            except:
+                image_table = Table()
+                image_table.meta=result.meta
+                image_result_list.append(image_table)
+                print("ERROR parsing result as ImageTable. Setting as empty and appending meta-data")
+
+#        for result in result_list:
+#            image_table = ImageTable(result, copy=False)
+#            image_result_list.append(image_table)
 
         return image_result_list
 
@@ -245,6 +254,16 @@ class ImageTable(Table):
     Row = ImRow
 
     __ucdmap__ = None
+
+#    def __init__(self, table,**kwargs):
+#        """ An init that attempts to trap issues and return the meta data for debugging."""
+#        try:
+#            Table.__init__(self,table,**kwargs)
+#            self.table=Table(table,**kwargs)
+#        except:
+#            print("ERROR parsing input as ImageTable. Setting as an empty table and appending meta-data")
+#            self.table=Table()
+#            self.table.meta=table.meta
 
 
     def __compute_ucd_column__(self, mnemonic):
