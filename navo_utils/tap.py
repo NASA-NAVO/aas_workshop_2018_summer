@@ -25,7 +25,7 @@ class TapClass(BaseQuery):
 
     def query(self, service, query, upload_file=None,upload_name=None):
 
-        if type(service) is str or numpy.str_:
+        if type(service) is str:
             service = {"access_url":service}
 
         url = service['access_url'] + '/sync?'
