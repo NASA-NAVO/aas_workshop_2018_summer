@@ -1,4 +1,4 @@
-import registry.Registry 
+from .registry import Registry 
 
 def test_reg_chan():
     chan_services=Registry.query(source='chanmaster',service_type='cone')
